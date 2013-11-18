@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">HeartrateDriverActivity</string>
+    <string name="app_name">HeartEKGSensor</string>
+    <string name="connect">Connect</string>
+    <string name="graph">graph</string>
+    <string name="heartRate">Heart Rate</string>
+    <string name="time">Time</string>
+    <string name="start">Start</string>
+</resources>

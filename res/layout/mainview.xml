@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/LinearLayout1"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp" >
+
+    <Button
+        android:id="@+id/connectButton"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:onClick="connectAction"
+        android:padding="20dp"
+        android:text="@+string/connect"
+        android:textSize="21sp" />
+    
+    <Button
+        android:id="@+id/startButton"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:onClick="startAction"
+        android:padding="20dp"
+        android:text="@+string/start"
+        android:textSize="21sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+
+        <TextView
+            android:id="@+id/heartRateLabel"
+            android:layout_width="125dp"
+            android:layout_height="wrap_content"
+            android:text="@+string/heartRate"            
+            android:textSize="21sp" >
+        </TextView>
+        
+         <TextView
+            android:id="@+id/heartRateField"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="21sp" > >
+        </TextView>
+        <TextView
+            android:id="@+id/timeLabel"
+            android:layout_width="125dp"
+            android:layout_height="wrap_content"
+            android:text="@+string/time"            
+            android:textSize="21sp" >
+        </TextView>
+        
+         <TextView
+            android:id="@+id/timeField"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="21sp" > >
+        </TextView>
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/graphButton"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:onClick="graphAction"
+        android:padding="20dp"
+        android:text="@+string/graph"
+        android:textSize="21sp" />
+
+</LinearLayout>
