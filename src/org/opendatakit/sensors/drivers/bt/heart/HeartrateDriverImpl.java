@@ -57,7 +57,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	public static final String BEAT_COUNT = "BC";
 	public  static final String HEART_RATE = "HR";
 	
-	private static final int ZEPHYR_PDU_SIZE = 2; // sending 2 uints at a time
+	private static final int ZEPHYR_PDU_SIZE = 4; // receiving 10 bytes at a time
 	private static final String TAG = "ZephyrHRSensorV2";
 
 	public HeartrateDriverImpl() {
@@ -111,16 +111,16 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 				byte b = dataBuffer.remove(0);	
 
 				// Change!!!
-				if(i == 0) {
-					masked = b & 0xff;  // get the least significant byte
-					parsedPkt.putInt(HEART_RATE, masked);
-					Log.d(TAG,"V2 HR: " + masked);
-				}
-				else if(i == 1) {
+				//if(i == 0) {
+				//	masked = b & 0xff;  // get the least significant byte
+				//	parsedPkt.putInt(HEART_RATE, masked);
+				//	Log.d(TAG,"V2 HR: " + masked);
+				//}
+				//else if(i == 1) {
 					masked = b & 0xff;  // get the least significant byte
 					parsedPkt.putInt(BEAT_COUNT, masked);
 					Log.d(TAG,"V2 BC: " + masked);
-				}
+				//}
 			}
 		}
 

@@ -44,21 +44,6 @@ import com.androidplot.xy.XYPlot;
 import com.androidplot.xy.XYSeries;
 import com.androidplot.xy.XYStepMode;
 
-/*
- * Android applications get data from physical sensors via the Android Service interface exposed by ODKSensors that is declared in:
- * org.opendatakit.sensors.service.ODKSensorService.aidl 
- * ODK Collect/ODK Survey forms can also receive sensor data. In order for this to happen, sensor drivers need 
- * to implement an activity that allows users to connect to and collect data from sensors. The activity is invoked from a form 
- * and sensor data is returned to the form via the result intent from the activity. This activity's classname is included as 
- * the "ODK_sensors_read_ui" meta-data element in the manifest file of the sensor driver application. This meta-data element 
- * allows other applications (like ODK Collect) that interface with ODKSensors to discover the activity at runtime.  
- * 
- * The HeartrateDriverActivity is an example of a ODK_sensors_read_ui activity. Application developers could implement a similar 
- * activity as part of their application that interacts with ODKSensors to collect sensor data.
- * 
- * Please look at HeartrateDriverImpl.java for a description of sensor drivers and how to implement a driverImpl class.
- */
-
 /* 
  * Activities that communicate with ODK Sensors need to extend org.opendatakit.sensors.service.BaseActivity, which provides the methods 
  * to interface with the Sensors framework. Typically, methods from BaseActivity are invoked in the following sequence:
@@ -74,16 +59,6 @@ import com.androidplot.xy.XYStepMode;
  *  
  */
 public class HeartrateDriverActivity extends BaseActivity {
-	
-    // encapsulates management of the observers watching this datasource for update events:
-    class MyObservable extends Observable {
-    @Override
-	    public void notifyObservers() {
-    	Log.d(TAG, "Notify observers");
-	        setChanged();
-	        super.notifyObservers();
-	    }
-    }
  
 	private static final String HR_SENSOR_ID_STR = "ZEPHYR_SENSOR_ID";
 	private static final String TAG = "SensorDriverActivity";
@@ -101,10 +76,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 	private DataProcessor sensorDataProcessor;
 	
 	private Button connectButton, startButton;
-	
-	//private TextView timeField;
-	
-	//private TextView heartRateField;
 	
 	private ConnectionThread connectionThread;
 
@@ -129,7 +100,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         heartSeries.useImplicitXVals();
         
         dynamicPlot.setRangeBoundaries(0, 250, BoundaryMode.FIXED);
-        dynamicPlot.setDomainBoundaries(0, SAMPLE_SIZE, BoundaryMode.FIXED);
+        dynamicPlot.setDomainBoundaries(0, 200, BoundaryMode.FIXED);
         dynamicPlot.addSeries(heartSeries, new LineAndPointFormatter());
         dynamicPlot.setDomainStepValue(1);
         dynamicPlot.setTicksPerRangeLabel(3);
@@ -140,9 +111,6 @@ public class HeartrateDriverActivity extends BaseActivity {
         
 		connectButton = (Button)findViewById(R.id.connectButton);
 		startButton = (Button)findViewById(R.id.startButton);
-		//graphButton = (Button)findViewById(R.id.graphButton);
-		//timeField = (TextView) findViewById(R.id.timeField);
-		//heartRateField = (TextView) findViewById(R.id.heartRateField);
 		
 		SharedPreferences appPreferences = getPreferences(MODE_PRIVATE);
 		
