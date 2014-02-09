@@ -89,20 +89,34 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private volatile int[] voltageValues;
 	
+	
+	//REMOVE LATER
+	private volatile int[] qrsValues;
+	
 	private DataProcessor sensorDataProcessor;
 	
 //	private Button connectButton, startButton;
 	
 	private ConnectionThread connectionThread;
-
-	private static final int SAMPLE_SIZE = 1000; //200 sample_size and 50 pdu_size
-	private static final int RANGE_MIN = 300;
-	private static final int RANGE_MAX = 700;
+	
 	private static final int REQUEST_ENABLE_BT = 2;
-    // main plot
-    private XYPlot dynamicPlot = null;
-    // data series for EKG
+
+	// main plot
+	private XYPlot dynamicPlot = null;
+
+	// Constants for the plot display
+	private static final int SAMPLE_RATE = 250; // 250 samples per second
+	private static final int SAMPLE_SIZE = 750; //200 sample_size and 50 pdu_size
+	private static final int RANGE_MIN = -200; //300;
+	private static final int RANGE_MAX = 200; //700;
+	private static final int DOMAIN_STEP_VALUE = (int) ((SAMPLE_SIZE / SAMPLE_RATE) / 0.04); // each square is 0.04sec
+	private static final int RANGE_STEP_VALUE = (int) (RANGE_MAX - RANGE_MIN) / 10;
+	
+	// data series for EKG
     private SimpleXYSeries heartSeries = null;
+    
+    // REMOVE later
+    private SimpleXYSeries qrsSeries = null;
 	
 	
 	@Override
@@ -110,7 +124,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.plot);
 		
-		//heartRateField = (TextView) findViewById(R.id.heartRateField);
+		heartRateField = (TextView) findViewById(R.id.heartRateField);
 		//conditionField = (TextView) findViewById(R.id.conditionField);
 		
 		// Shown now as a placeholder. remove later
@@ -185,6 +199,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 		if (!isConnectedToSensor) {
 			//establish a connection to the physical sensor if we aren't connected already.
 			connectToSensor();
+			
+        	Toast.makeText(this, "Device Connected", Toast.LENGTH_SHORT).show();
 			Log.d(TAG, "connect to sensor succeed");
 		}
 	}
@@ -196,6 +212,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 			//sensor data can be received from the framework after this.
 			sensorDataProcessor.execute();
 			super.startSensor(sensorID);
+			
+        	Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
+        	
 			Log.d(TAG, "startSensor succeed");
 		}
 		catch(RemoteException rex) {
@@ -329,6 +348,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 						heartRate = aBundle.getInt(HeartrateDriverImpl.HEART_RATE);
 						voltageValues = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
 						
+						// REMOVE later
+						qrsValues = aBundle.getIntArray(HeartrateDriverImpl.QRS_VALUES);
+						
 				        
 				        for (int i = 0; i < voltageValues.length; i++) {
 					    
@@ -337,22 +359,33 @@ public class HeartrateDriverActivity extends BaseActivity {
 					        	// erase data
 					        	while (heartSeries.size() > 0) {
 					        		heartSeries.removeFirst();
+					        		
+					        	    // REMOVE later
+					        		qrsSeries.removeFirst();
 					        	}
 					        	
 					        	//heartSeries.removeFirst();
 					        }
 					        
 					        Log.d(TAG, "heartVOl: " + voltageValues[i]);
-				        	heartSeries.addLast(null, voltageValues[i]);				        
+				        	heartSeries.addLast(null, voltageValues[i]);
+				        	
+				            // REMOVE later
+				        	qrsSeries.addLast(null, qrsValues[i]);
+				        	
 							dynamicPlot.redraw();
 				        
 				        }
 				        
 
 						//update UI
-						//Log.d(TAG, "heartrate: " + heartRate);
+						Log.d(TAG, "heartrate: " + heartRate);
 						//Log.d(TAG, "beatcount: " + beatCount);
-						//heartRateField.setText(String.valueOf(heartRate));
+						if (heartRate == 0) {
+							heartRateField.setText(String.valueOf("Detecting Heartrate"));
+						} else {
+							heartRateField.setText(String.valueOf(heartRate));
+						}
 						//timeField.setText(String.valueOf(beatCount));
 					}
 				}
@@ -457,7 +490,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         case R.id.connect:
         	
         	connectAction();
-        	
+
             return true;
         case R.id.start:
         	
@@ -490,15 +523,15 @@ public class HeartrateDriverActivity extends BaseActivity {
         // Domain
         dynamicPlot.getGraphWidget().setDomainLabelPaint(null);
         dynamicPlot.getGraphWidget().setDomainOriginLinePaint(null);
-        dynamicPlot.setDomainStep(XYStepMode.SUBDIVIDE, 20); // need to modify the step value later
+        dynamicPlot.setDomainStep(XYStepMode.SUBDIVIDE, DOMAIN_STEP_VALUE);
         dynamicPlot.setDomainValueFormat(new DecimalFormat("0"));
         
         //Range
         //dynamicPlot.getGraphWidget().getRangeLabelPaint().setColor(Color.TRANSPARENT);
         //dynamicPlot.getGraphWidget().getRangeOriginLabelPaint().setColor(Color.TRANSPARENT);
-        dynamicPlot.getGraphWidget().setRangeLabelPaint(null);
+        //dynamicPlot.getGraphWidget().setRangeLabelPaint(null);
         dynamicPlot.getGraphWidget().setRangeOriginLinePaint(null);
-        dynamicPlot.setRangeStep(XYStepMode.SUBDIVIDE, 10); // need to modify the step value later
+        dynamicPlot.setRangeStep(XYStepMode.SUBDIVIDE, RANGE_STEP_VALUE);
         dynamicPlot.setRangeValueFormat(new DecimalFormat("0"));
         
         //Remove legend
@@ -515,6 +548,13 @@ public class HeartrateDriverActivity extends BaseActivity {
         // Use index value as xVal, instead of explicit, user provided xVals.
         heartSeries.useImplicitXVals();
         
+        
+        //REMOVE LATER
+        qrsSeries = new SimpleXYSeries("qrs");
+        // Use index value as xVal, instead of explicit, user provided xVals.
+        qrsSeries.useImplicitXVals();
+        
+        
         // Create a formatter to use for drawing a series using LineAndPointRenderer:
         LineAndPointFormatter series1Format = new LineAndPointFormatter(
                 Color.rgb(0, 0, 0),   // line color
@@ -522,10 +562,22 @@ public class HeartrateDriverActivity extends BaseActivity {
                 null, 					// fill color 
                 null);                  // PointLabelFormatter
         
+        //REMOVE LATER
+        LineAndPointFormatter series2Format = new LineAndPointFormatter(
+                Color.rgb(138, 43, 226),   // line color
+                null,                   // point color
+                null, 					// fill color 
+                null);                  // PointLabelFormatter
+        
+        
+        
         dynamicPlot.setRangeBoundaries(RANGE_MIN, RANGE_MAX, BoundaryMode.FIXED);
         //dynamicPlot.setRangeBoundaries(400, 650, BoundaryMode.FIXED);
         dynamicPlot.setDomainBoundaries(0, SAMPLE_SIZE, BoundaryMode.FIXED);
         dynamicPlot.addSeries(heartSeries, series1Format);
+        
+        //REMOVE LATER
+        dynamicPlot.addSeries(qrsSeries, series2Format);
      
 
         XYGraphWidget g = dynamicPlot.getGraphWidget();
