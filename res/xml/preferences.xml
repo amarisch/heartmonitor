@@ -1,0 +1,37 @@
+<PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<PreferenceCategory>
+
+        <ListPreference
+                android:key="viewsetting"
+                android:title="View Setting"
+                android:summary="Choose the range of the display"
+                android:entries="@array/entry_viewsetting_preference"
+                android:entryValues="@array/entryvalues_viewsetting_preference"
+                android:dialogTitle="View Setting" />
+
+    </PreferenceCategory>
+    
+    <PreferenceCategory
+            android:title="PreferenceCategory A">
+
+        <CheckBoxPreference
+                android:key="checkbox_preference"
+                android:title="title_checkbox_preference"
+                android:summary="summary_checkbox_preference" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+            android:title="PreferenceCategory B">
+
+        <EditTextPreference
+                android:key="edittext_preference"
+                android:title="title_edittext_preference"
+                android:summary="summary_edittext_preference"
+                android:dialogTitle="dialog_title_edittext_preference" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

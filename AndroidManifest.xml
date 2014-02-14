@@ -15,6 +15,11 @@
             </intent-filter>
         </activity>        
         
+        <activity
+            android:name=".SetPreferenceActivity" >
+        </activity>
+        
+        
         
         <!-- The meta-data elements required by ODKSensors -->
         

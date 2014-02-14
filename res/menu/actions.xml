@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item
+        android:id="@+id/large_view"
+        android:title="@string/large_view"
+        />
+ 
+    <item
+        android:id="@+id/small_view"
+        android:title="@string/small_view"
+    />
+ 
+    <item
+        android:id="@+id/default_view"
+        android:title="@string/default_view"
+    />
+</menu>

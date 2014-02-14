@@ -23,11 +23,12 @@
             android:layout_weight="1"
             android:textSize="21sp" >
         </TextView>
-    </LinearLayout>
-    
-    <com.androidplot.xy.XYPlot
-        android:id="@+id/dynamicPlot"
-        android:layout_width="fill_parent"
-        android:layout_height="400dip" />
+	</LinearLayout>
+	    <LinearLayout 
+	        android:id="@+id/lygforce"
+	        android:orientation="horizontal"
+	        android:layout_width="fill_parent"
+	        android:layout_height="0dip"
+	        android:layout_weight="1"/>
 
 </LinearLayout>

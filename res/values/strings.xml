@@ -7,4 +7,20 @@
     <string name="heartRate">Heart Rate</string>
     <string name="condition">Condition</string>
     <string name="start">Start</string>
+    <string name="large_view">Large View</string>
+    <string name="small_view">Small View</string>
+    <string name="default_view">Default</string>
+    <string name="preferences">Preferences</string>
+    
+    
+    <string name="pref_send_report">Send crash reports</string>
+    <string name="pref_send_report_summary">Helps to fix bugs</string>
+    <string name="pref_sync_frequency">Sync frequency</string>
+    <string name="pref_sync_frequency_summary">Set the sync frequency</string>
+    <string name="pref_user_name">Set username</string>
+    <string name="pref_user_name_summary">Set your username</string>
+     
+    <string name="pref_user_profile">User Profile</string>
+    <string name="pref_update_setting">Update Settings</string>
+    
 </resources>

@@ -17,44 +17,44 @@
 
 package org.opendatakit.sensors.drivers.bt.heart;
 
+import java.sql.Date;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 
+import org.achartengine.ChartFactory;
+import org.achartengine.GraphicalView;
+import org.achartengine.model.TimeSeries;
+import org.achartengine.model.XYMultipleSeriesDataset;
+import org.achartengine.model.XYSeries;
+import org.achartengine.renderer.XYMultipleSeriesRenderer;
+import org.achartengine.renderer.XYSeriesRenderer.FillOutsideLine;
 import org.opendatakit.sensors.service.BaseActivity;
+import org.achartengine.renderer.XYSeriesRenderer;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.androidplot.Plot;
-import com.androidplot.ui.AnchorPosition;
-import com.androidplot.ui.LayoutManager;
-import com.androidplot.ui.SizeLayoutType;
-import com.androidplot.ui.SizeMetrics;
-import com.androidplot.ui.XLayoutStyle;
-import com.androidplot.ui.YLayoutStyle;
-import com.androidplot.xy.BoundaryMode;
-import com.androidplot.xy.LineAndPointFormatter;
-import com.androidplot.xy.SimpleXYSeries;
-import com.androidplot.xy.XYGraphWidget;
-import com.androidplot.xy.XYPlot;
-import com.androidplot.xy.XYSeries;
-import com.androidplot.xy.XYStepMode;
 
 /* 
  * Activities that communicate with ODK Sensors need to extend org.opendatakit.sensors.service.BaseActivity, which provides the methods 
@@ -101,39 +101,155 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private static final int REQUEST_ENABLE_BT = 2;
 
-	// main plot
-	private XYPlot dynamicPlot = null;
+	// For AChartEngine main plot
+	private XYSeries voltageSeries;
+    private static XYMultipleSeriesDataset dataset;
+    private static XYMultipleSeriesRenderer renderer;
+    private static XYSeriesRenderer rendererSeries;
+    private static GraphicalView waveform;
 
+    // plot of the ecg
+    private LinearLayout plot;
+    private static int index = 0;
+    
+    
+    // Preference settings
+    private SharedPreferences mPrefs;
+    
+    private static final String VIEW_KEY = "viewsetting";
+    private int viewId = 1;
+    
+    private static final int[][] VIEW_SCHEMES = {
+        {-50, 50}, {-100, 100}, {-200, 200}};
+    
 	// Constants for the plot display
 	private static final int SAMPLE_RATE = 250; // 250 samples per second
-	private static final int SAMPLE_SIZE = 750; //200 sample_size and 50 pdu_size
-	private static final int RANGE_MIN = -200; //300;
-	private static final int RANGE_MAX = 200; //700;
+	private static final int SAMPLE_SIZE = 1000; //200 sample_size and 50 pdu_size
+	private static final int RANGE_MIN = -100; //300;
+	private static final int RANGE_MAX = 100; //700;
+	private static final int DOMAIN_MIN = 0;
+	private static final int DOMAIN_MAX = 1000; 
 	private static final int DOMAIN_STEP_VALUE = (int) ((SAMPLE_SIZE / SAMPLE_RATE) / 0.04); // each square is 0.04sec
 	private static final int RANGE_STEP_VALUE = (int) (RANGE_MAX - RANGE_MIN) / 10;
 	
-	// data series for EKG
-    private SimpleXYSeries heartSeries = null;
-    
-    // REMOVE later
-    private SimpleXYSeries qrsSeries = null;
 	
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		// automatically set orientation to landscape
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+		
+		mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        readPrefs();
+		
 		setContentView(R.layout.plot);
+		
+		plot = (LinearLayout) findViewById(R.id.lygforce);
 		
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
 		//conditionField = (TextView) findViewById(R.id.conditionField);
 		
-		// Shown now as a placeholder. remove later
-		//heartRateField.setText(String.valueOf(heartRate));
-		//conditionField.setText(String.valueOf(heartRate));
-		
-		// Initialize AndroidPlot setting
+		// Initialize Plot setting
 		plot_init();
 
+		preference_settings();
+
+	}
+
+
+	private void readPrefs() {
+		viewId = readIntPref(VIEW_KEY, viewId, VIEW_SCHEMES.length - 1);
+	}
+	
+    private int readIntPref(String key, int defaultValue, int maxValue) {
+        int val;
+        try {
+            val = Integer.parseInt(
+                mPrefs.getString(key, Integer.toString(defaultValue)));
+            Log.d(TAG,"val: " + val);
+        } catch (NumberFormatException e) {
+            val = defaultValue;
+        }
+        val = Math.max(0, Math.min(val, maxValue));
+        Log.d(TAG,"val: " + val);
+        return val;
+    }
+
+    // update changes made to preferences
+    private void updatePrefs() {
+        setView();
+
+        plot.removeAllViews();  //This remove previous graph
+        plot.addView(waveform); //This loads the graph again
+    }
+
+    // set the new view
+	private void setView() {
+        int[] scheme = VIEW_SCHEMES[viewId];
+        renderer.setYAxisMin(scheme[0]);
+        renderer.setYAxisMax(scheme[1]);
+        Log.d(TAG,"set view: " + scheme[0] + ", " + scheme[1]);
+	}
+
+
+	public void plot_init() {
+        dataset = new XYMultipleSeriesDataset();
+        renderer = new XYMultipleSeriesRenderer();
+        renderer.setApplyBackgroundColor(true);
+        renderer.setBackgroundColor(Color.argb(255, 255, 255, 255));
+        renderer.setAxisTitleTextSize(16);
+        renderer.setChartTitleTextSize(20);
+        renderer.setLabelsTextSize(15);
+        renderer.setLegendTextSize(15);
+        renderer.setMargins(new int[] { 20, 30, 15, 0 });
+        renderer.setZoomButtonsVisible(true);
+        renderer.setPointSize(10);
+        renderer.setShowGrid(true);
+        renderer.setGridColor(Color.RED);
+        
+        /* 25small squares/sec
+         * we are fitting 1000 samples(4 sec) in a screen
+         * we need to have 100 small squares
+         */
+        renderer.setXLabels(100);
+        
+        /* 25small squares/sec
+         * we are fitting 1000 samples(4 sec) in a screen
+         * we need to have 100 small squares
+         */
+        renderer.setYLabels(50);
+        renderer.setShowLabels(true);
+
+        renderer.setYAxisMin(RANGE_MIN);
+        renderer.setYAxisMax(RANGE_MAX);
+        renderer.setXAxisMin(DOMAIN_MIN);
+        renderer.setXAxisMax(DOMAIN_MAX);
+        //renderer.setPanLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
+        //renderer.setZoomLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
+
+        rendererSeries = new XYSeriesRenderer();
+        rendererSeries.setColor(Color.BLACK);
+        rendererSeries.setLineWidth(2);
+
+        renderer.addSeriesRenderer(rendererSeries);
+
+        voltageSeries = new XYSeries("ECG waveform");
+
+        dataset.addSeries(voltageSeries);
+
+        waveform = ChartFactory.getLineChartView(this, dataset, renderer);
+        waveform.refreshDrawableState();
+        waveform.repaint();
+
+        plot.addView(waveform);
+        
+        
+    }
+	
+	// To store different sensor IDs
+    private void preference_settings() {
 		SharedPreferences appPreferences = getPreferences(MODE_PRIVATE);
 		
 		//restore the sensorID if we stored it earlier
@@ -145,7 +261,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 			}
 		}	
 	}
-	
+
 	public boolean onCreateOptionsMenu(Menu menu) {
 	    MenuInflater inflater = getMenuInflater();
 	    inflater.inflate(R.menu.options_menu, menu);
@@ -156,8 +272,13 @@ public class HeartrateDriverActivity extends BaseActivity {
 		super.onResume();
 		
 		sensorDataProcessor = new DataProcessor();
-		//sensorDataProcessor.execute();
+		sensorDataProcessor.execute();
 		
+    	readPrefs();
+    	updatePrefs();
+		
+    	//startAction();
+    	
 /*		connectButton.setEnabled(false);
 		startButton.setEnabled(false);		
 		
@@ -199,8 +320,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 		if (!isConnectedToSensor) {
 			//establish a connection to the physical sensor if we aren't connected already.
 			connectToSensor();
-			
-        	Toast.makeText(this, "Device Connected", Toast.LENGTH_SHORT).show();
 			Log.d(TAG, "connect to sensor succeed");
 		}
 	}
@@ -210,7 +329,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 		try {
 			//startSensor needs to be called after connecting to the physical sensor. 
 			//sensor data can be received from the framework after this.
-			sensorDataProcessor.execute();
+
 			super.startSensor(sensorID);
 			
         	Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
@@ -297,8 +416,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 				}
 			}
 		}
+		
 	}
-	
+
+
 	/*
 	 * The Zephyr heart rate monitor is a bluetooth enabled sensor. so we connect in a thread, waiting for the connection to get established.
 	 */
@@ -330,7 +451,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 				List<Bundle> sensorDataBundles = null;
 
 				try {
-					Log.d(TAG,"getSensorData");
+//					Log.d(TAG,"getSensorData");
 					
 					//call the getSensorData method periodically to get sensor data as key-value pairs from ODKSenors
 					sensorDataBundles = getSensorData(sensorID, 1);
@@ -351,33 +472,82 @@ public class HeartrateDriverActivity extends BaseActivity {
 						// REMOVE later
 						qrsValues = aBundle.getIntArray(HeartrateDriverImpl.QRS_VALUES);
 						
-				        
+						
+/*
+ * Voltage values being wrapped around and old values are removed
+ * 
+ */							
 				        for (int i = 0; i < voltageValues.length; i++) {
-					    
-							// write to the end of the screen, start from the beginning
-					        if (heartSeries.size() >= SAMPLE_SIZE) {
-					        	// erase data
-					        	while (heartSeries.size() > 0) {
-					        		heartSeries.removeFirst();
-					        		
-					        	    // REMOVE later
-					        		qrsSeries.removeFirst();
-					        	}
-					        	
-					        	//heartSeries.removeFirst();
-					        }
-					        
-					        Log.d(TAG, "heartVOl: " + voltageValues[i]);
-				        	heartSeries.addLast(null, voltageValues[i]);
+						    
+				        	if (index % DOMAIN_MAX == 0) {
+				        		voltageSeries.clear();
+				        	}
+				        	// write to the end of the screen, start from the beginning
+				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
+				        	index++;
+
+			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
+				        	waveform.repaint();
 				        	
-				            // REMOVE later
-				        	qrsSeries.addLast(null, qrsValues[i]);
-				        	
-							dynamicPlot.redraw();
+					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
+
+
 				        
 				        }
-				        
+						
+						
+/*
+ * Voltage values being wrapped around and old values being kept
+ * 
+ */						
+/*				        for (int i = 0; i < voltageValues.length; i++) {
+					    
+				        	if (index / (DOMAIN_MAX - 40) >= 1) {
+				        		voltageSeries.remove(0);
+				        	}
+				        	// write to the end of the screen, start from the beginning
+				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
+				        	index++;
+				        	
+				        	
+			                //renderer.setXAxisMax(renderer.getXAxisMax() + 30);
+			                //renderer.setXAxisMin(renderer.getXAxisMin() + 30);
 
+			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
+				        	waveform.repaint();
+				        	
+					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
+
+
+				        
+				        }
+*/				        
+						
+						
+/*
+ * Display moves with voltage values
+ * 
+ */
+/*						Log.d(TAG, "length: " + voltageValues.length);
+						
+				        for (int i = 0; i < voltageValues.length; i++) {
+						    
+				        	if (index >= DOMAIN_MAX - 40) {
+				                renderer.setXAxisMin(renderer.getXAxisMin() + 1);
+				                renderer.setXAxisMax(renderer.getXAxisMax() + 1);
+				        	}
+				        	
+				        	voltageSeries.add(index, voltageValues[i]);
+				        	index++;
+
+
+			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
+				        	waveform.repaint();
+				        	
+					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);			        
+				        }
+*/
+						
 						//update UI
 						Log.d(TAG, "heartrate: " + heartRate);
 						//Log.d(TAG, "beatcount: " + beatCount);
@@ -496,7 +666,11 @@ public class HeartrateDriverActivity extends BaseActivity {
         	
         	startAction();
         	
-            return true;    
+            return true;
+        case R.id.preferences:
+        	doPreferences();
+        	//registerForContextMenu(view_setting);
+        	return true;
 /*        case R.id.preferences:
         	doPreferences();
             return true;
@@ -511,97 +685,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         return false;
     }
     
-    public void plot_init() {
-		// initialize our XYPlot reference:
-        dynamicPlot = (XYPlot) findViewById(R.id.dynamicPlot);
-        //dynamicPlot.setBorderStyle(XYPlot.BorderStyle.NONE, null, null);
-        dynamicPlot.getGraphWidget().getBackgroundPaint().setColor(Color.WHITE);
-        dynamicPlot.getGraphWidget().getGridBackgroundPaint().setColor(Color.WHITE);
-        dynamicPlot.getGraphWidget().getDomainGridLinePaint().setColor(Color.RED);
-        dynamicPlot.getGraphWidget().getRangeGridLinePaint().setColor(Color.RED);
-        
-        // Domain
-        dynamicPlot.getGraphWidget().setDomainLabelPaint(null);
-        dynamicPlot.getGraphWidget().setDomainOriginLinePaint(null);
-        dynamicPlot.setDomainStep(XYStepMode.SUBDIVIDE, DOMAIN_STEP_VALUE);
-        dynamicPlot.setDomainValueFormat(new DecimalFormat("0"));
-        
-        //Range
-        //dynamicPlot.getGraphWidget().getRangeLabelPaint().setColor(Color.TRANSPARENT);
-        //dynamicPlot.getGraphWidget().getRangeOriginLabelPaint().setColor(Color.TRANSPARENT);
-        //dynamicPlot.getGraphWidget().setRangeLabelPaint(null);
-        dynamicPlot.getGraphWidget().setRangeOriginLinePaint(null);
-        dynamicPlot.setRangeStep(XYStepMode.SUBDIVIDE, RANGE_STEP_VALUE);
-        dynamicPlot.setRangeValueFormat(new DecimalFormat("0"));
-        
-        //Remove legend
-        dynamicPlot.getLayoutManager().remove(dynamicPlot.getLegendWidget());
-        dynamicPlot.getLayoutManager().remove(dynamicPlot.getDomainLabelWidget());
-        dynamicPlot.getLayoutManager().remove(dynamicPlot.getRangeLabelWidget());
-        dynamicPlot.getLayoutManager().remove(dynamicPlot.getTitleWidget());
-        
-        dynamicPlot.getGraphWidget().setSize(new SizeMetrics(
-                0, SizeLayoutType.FILL,
-                0, SizeLayoutType.FILL));
-        
-        heartSeries = new SimpleXYSeries("EKG");
-        // Use index value as xVal, instead of explicit, user provided xVals.
-        heartSeries.useImplicitXVals();
-        
-        
-        //REMOVE LATER
-        qrsSeries = new SimpleXYSeries("qrs");
-        // Use index value as xVal, instead of explicit, user provided xVals.
-        qrsSeries.useImplicitXVals();
-        
-        
-        // Create a formatter to use for drawing a series using LineAndPointRenderer:
-        LineAndPointFormatter series1Format = new LineAndPointFormatter(
-                Color.rgb(0, 0, 0),   // line color
-                null,                   // point color
-                null, 					// fill color 
-                null);                  // PointLabelFormatter
-        
-        //REMOVE LATER
-        LineAndPointFormatter series2Format = new LineAndPointFormatter(
-                Color.rgb(138, 43, 226),   // line color
-                null,                   // point color
-                null, 					// fill color 
-                null);                  // PointLabelFormatter
-        
-        
-        
-        dynamicPlot.setRangeBoundaries(RANGE_MIN, RANGE_MAX, BoundaryMode.FIXED);
-        //dynamicPlot.setRangeBoundaries(400, 650, BoundaryMode.FIXED);
-        dynamicPlot.setDomainBoundaries(0, SAMPLE_SIZE, BoundaryMode.FIXED);
-        dynamicPlot.addSeries(heartSeries, series1Format);
-        
-        //REMOVE LATER
-        dynamicPlot.addSeries(qrsSeries, series2Format);
-     
-
-        XYGraphWidget g = dynamicPlot.getGraphWidget();
-
- /*       dynamicPlot.getGraphWidget().setGridPaddingLeft(0);
-        dynamicPlot.getGraphWidget().setGridPaddingRight(0);
-        dynamicPlot.getGraphWidget().setMarginLeft(0);
-        dynamicPlot.getGraphWidget().setMarginRight(0);
-        g.setPadding(0, 0, 0, 0);
-        g.setMargins(0, 0, 0, 0);
-*/
-        dynamicPlot.setPlotMargins(0, 0, 0, 0);
-        dynamicPlot.setPlotPadding(0, 0, 0, 0);
-
-//        g.setRangeLabelWidth(0);
-//        g.setDomainLabelWidth(0);
-
-//        dynamicPlot.setDomainLabel("Time"); // x-axis title
-//        dynamicPlot.getDomainLabelWidget().pack();
-//        dynamicPlot.setRangeLabel("Voltage"); // y-axis title
-//        dynamicPlot.getRangeLabelWidget().pack();
-        
-//		connectButton = (Button)findViewById(R.id.connectButton);
-//		startButton = (Button)findViewById(R.id.startButton);
-		
+	private void doPreferences() {
+        startActivity(new Intent(this, SetPreferenceActivity.class));
     }
 }
