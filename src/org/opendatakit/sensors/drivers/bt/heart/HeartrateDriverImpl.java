@@ -70,6 +70,9 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	private static final int MSG_DATA_BEGIN_INDEX = 3;
 	private static final int MSG_DATA_END_INDEX = 3 + VOLTAGE_SAMPLE_SIZE * 2;
 
+	// qrs peaks index array
+	private static int[] qrsPeakIndex = new int[10];
+	
 	
 	//message types
 	private static final int MSG_READING = 1; //1 temp reading per msg
@@ -262,25 +265,23 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	/*
 
 	FIR filter designed with
-	 http://t-filter.appspot.com
+	http://t-filter.appspot.com
 
 	sampling frequency: 250 Hz
 
-	fixed point precision: 10 bits
-
-	* 0 Hz - 10 Hz
+	* 0 Hz - 7 Hz
 	  gain = 1
 	  desired ripple = 5 dB
-	  actual ripple = n/a
+	  actual ripple = 3.4476256949711925 dB
 
 	* 15 Hz - 125 Hz
 	  gain = 0
-	  desired attenuation = -10 dB
-	  actual attenuation = n/a
+	  desired attenuation = -100 dB
+	  actual attenuation = -101.61263113360366 dB
 
 	*/
 
-	public static final int SAMPLEFILTER_TAP_NUM = 67;
+	public static final int SAMPLEFILTER_TAP_NUM = 97; //67;
 	public class Bandpass {
 		public int[] history = new int[SAMPLEFILTER_TAP_NUM];
 		public int last_index;
@@ -293,57 +294,87 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 				  0,
 				  0,
 				  0,
+				  0,
+				  0,
+				  0,
 				  -1,
 				  -1,
-				  -2,
+				  -1,
 				  -2,
 				  -3,
 				  -4,
-				  -5,
-				  -6,
-				  -6,
-				  -6,
-				  -5,
 				  -4,
-				  -1,
-				  3,
-				  9,
-				  16,
-				  24,
-				  34,
+				  -6,
+				  -7,
+				  -8,
+				  -9,
+				  -11,
+				  -12,
+				  -13,
+				  -14,
+				  -15,
+				  -15,
+				  -14,
+				  -13,
+				  -12,
+				  -9,
+				  -6,
+				  -3,
+				  2,
+				  7,
+				  13,
+				  19,
+				  25,
+				  32,
+				  39,
 				  45,
-				  55,
+				  52,
+				  57,
+				  62,
 				  66,
-				  76,
-				  85,
-				  91,
-				  95,
-				  96,
-				  95,
-				  91,
-				  85,
-				  76,
+				  69,
+				  71,
+				  71,
+				  71,
+				  69,
 				  66,
-				  55,
+				  62,
+				  57,
+				  52,
 				  45,
-				  34,
-				  24,
-				  16,
-				  9,
-				  3,
-				  -1,
+				  39,
+				  32,
+				  25,
+				  19,
+				  13,
+				  7,
+				  2,
+				  -3,
+				  -6,
+				  -9,
+				  -12,
+				  -13,
+				  -14,
+				  -15,
+				  -15,
+				  -14,
+				  -13,
+				  -12,
+				  -11,
+				  -9,
+				  -8,
+				  -7,
+				  -6,
 				  -4,
-				  -5,
-				  -6,
-				  -6,
-				  -6,
-				  -5,
 				  -4,
 				  -3,
 				  -2,
-				  -2,
 				  -1,
 				  -1,
+				  -1,
+				  0,
+				  0,
+				  0,
 				  0,
 				  0,
 				  0,
@@ -770,6 +801,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	private int heartrate = 0;
 	private long t_stop = 0;
 	private long t_start = 0;
+	private long t_first = 0;
 	private void detect_heartrate(int data) {
 
 	  dt.t++;
@@ -796,6 +828,10 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 
 	      // time calls
 	      t_stop = System.currentTimeMillis();                 // get stop time in milisec
+	      // keep track of first timestamp
+	      if (t_first == 0) {
+	    	  t_first = t_stop;
+	      }
 	      //Log.d(TAG,"t_stop: " + t_stop + ", t_start: " + t_start);
 	      
 	      long d_t = t_stop - t_start;    // calculate delta t
@@ -808,14 +844,26 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	      
 	      // only take the heartrate value if it's in a reasonable range: less than 300bpm
 	      if (h < 300) {
-	    	  h = (int) ((h)*0.125 + 0.875*dt.hr[4]);
+	    	  if (dt.hr[0] != 0)
+		    	  h = (int) ((h)*0.125 + 0.875*dt.hr[4]);
 	    	  //Log.d(TAG, "HEARTRATE: " + h);
-	    	  if (h < dt.hr[0] + 5 && h > dt.hr[0] - 5) { // the new heartrate should differ 5 heartrates ago  by < 10
+/*	    	  if (h < dt.hr[0] + 5 && h > dt.hr[0] - 5) { // the new heartrate should differ 5 heartrates ago  by < 10
 	    		  // average of 5 heartrates 
 	    		  heartrate = (dt.hr[1] + dt.hr[2] + dt.hr[3] + dt.hr[4] + (int) h) / 5;
 	    	  } else {
 	    		  heartrate = 0; // heartrate still changing too much, don't display it yet
 	    	  }
+*/	    	  
+	    	  if (t_stop - t_first >= 5000) {
+	    		  if (dt.hr[0] != 0) {
+	    			  heartrate = (dt.hr[1] + dt.hr[2] + dt.hr[3] + dt.hr[4] + (int) h) / 5;
+	    		  } else {
+	    			  heartrate = (int) h;
+	    		  }
+	    	  } else {
+	    		  heartrate = 0; // heartrate still changing too much, don't display it yet
+	    	  }
+	    	  
 	    	  for (int i = 0; i < 4; ++i)
 	    		  dt.hr[i] = dt.hr[i+1];
 	    	  dt.hr[4] = (int)h;

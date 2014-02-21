@@ -19,6 +19,13 @@
             android:name=".SetPreferenceActivity" >
         </activity>
         
+        <activity
+            android:name=".ViewActivity" >
+        </activity>
+        
+        <activity
+            android:name=".DatabaseActivity" >
+        </activity>        
         
         
         <!-- The meta-data elements required by ODKSensors -->

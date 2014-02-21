@@ -83,12 +83,20 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private boolean isStarted = false;
 	
-	private volatile int heartRate;
+	private static int heartRate;
 	
-	private TextView heartRateField, conditionField;
+	private static int condition;
 	
-	private volatile int[] voltageValues;
+	private static final String[] HEART_CONDITION_OPTIONS = {
+        "Normal", "Bradycardia", "Tachycardia", "Premature Ventricular Contraction", "Premature Atrial Contraction"};
 	
+	private TextView heartRateField;
+	
+	private static int[] voltageValues;
+	
+	private static int[] voltageArray = new int[7500];
+	private static int[] hrArray = new int[30];
+	private static int hrIndex = 0;
 	
 	//REMOVE LATER
 	private volatile int[] qrsValues;
@@ -103,9 +111,11 @@ public class HeartrateDriverActivity extends BaseActivity {
 
 	// For AChartEngine main plot
 	private XYSeries voltageSeries;
+	private XYSeries qrsLines;
     private static XYMultipleSeriesDataset dataset;
     private static XYMultipleSeriesRenderer renderer;
     private static XYSeriesRenderer rendererSeries;
+    private static XYSeriesRenderer qrsrendererSeries;
     private static GraphicalView waveform;
 
     // plot of the ecg
@@ -220,24 +230,34 @@ public class HeartrateDriverActivity extends BaseActivity {
          * we need to have 100 small squares
          */
         renderer.setYLabels(50);
-        renderer.setShowLabels(true);
+        
+        // x and y axis labels
+        renderer.setShowLabels(false);
 
         renderer.setYAxisMin(RANGE_MIN);
         renderer.setYAxisMax(RANGE_MAX);
         renderer.setXAxisMin(DOMAIN_MIN);
         renderer.setXAxisMax(DOMAIN_MAX);
-        //renderer.setPanLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
-        //renderer.setZoomLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
+        renderer.setPanLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
+        renderer.setZoomLimits(new double[] { DOMAIN_MIN, DOMAIN_MAX, 0, 0 });
 
         rendererSeries = new XYSeriesRenderer();
         rendererSeries.setColor(Color.BLACK);
         rendererSeries.setLineWidth(2);
 
+        qrsrendererSeries = new XYSeriesRenderer();
+        qrsrendererSeries.setColor(Color.BLUE);
+        qrsrendererSeries.setLineWidth(2);
+        
         renderer.addSeriesRenderer(rendererSeries);
-
+        renderer.addSeriesRenderer(qrsrendererSeries);
+        
         voltageSeries = new XYSeries("ECG waveform");
-
         dataset.addSeries(voltageSeries);
+        
+        qrsLines = new XYSeries("qrs peaks");
+        dataset.addSeries(qrsLines);
+
 
         waveform = ChartFactory.getLineChartView(this, dataset, renderer);
         waveform.refreshDrawableState();
@@ -331,6 +351,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 			//sensor data can be received from the framework after this.
 
 			super.startSensor(sensorID);
+			index = 0;
+			hrIndex = 0;
+			voltageSeries.clear();
+			waveform.repaint();
 			
         	Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
         	
@@ -376,13 +400,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	public void onConfigurationChanged(Configuration newConfig) {
 	    super.onConfigurationChanged(newConfig);
-
-	    // Checks the orientation of the screen
-	    if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-	        Toast.makeText(this, "landscape", Toast.LENGTH_SHORT).show();
-	    } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
-	        Toast.makeText(this, "portrait", Toast.LENGTH_SHORT).show();
-	    }
 	}
 	
 	/*
@@ -467,6 +484,11 @@ public class HeartrateDriverActivity extends BaseActivity {
 						//retrieve sensor data from each bundle and store it locally. 
 						
 						heartRate = aBundle.getInt(HeartrateDriverImpl.HEART_RATE);
+						
+						if (hrIndex < 29)
+							hrArray[hrIndex++] = heartRate;
+						
+						
 						voltageValues = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
 						
 						// REMOVE later
@@ -477,15 +499,36 @@ public class HeartrateDriverActivity extends BaseActivity {
  * Voltage values being wrapped around and old values are removed
  * 
  */							
-				        for (int i = 0; i < voltageValues.length; i++) {
+						Log.d(TAG, "VOLTAGE LENGTH: " + voltageValues.length);
+						for (int i = 0; i < voltageValues.length; i++) {
 						    
+				        	if (index == 7500) {
+				                Intent in = new Intent(HeartrateDriverActivity.this,ViewActivity.class);
+				                in.putExtra("xyseries", voltageArray);
+				                heartRate = computeAverageHR();
+				                in.putExtra("heartrate", heartRate);
+				                condition = detectHeartCondition();
+				                in.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
+				                startActivity(in);
+				                return;
+				        	}
+				        	
 				        	if (index % DOMAIN_MAX == 0) {
 				        		voltageSeries.clear();
+				        		qrsLines.clear();
 				        	}
+				        	
+				        	if (index != 0 && index % 250 == 0) {
+				                qrsLines.add((index - 0.000001) % DOMAIN_MAX, -500);
+				                qrsLines.add(index % DOMAIN_MAX, 500);
+				                qrsLines.add((index + 0.000001) % DOMAIN_MAX, -500);
+				        	}
+				        	
 				        	// write to the end of the screen, start from the beginning
 				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
+				        	voltageArray[index] = voltageValues[i];
 				        	index++;
-
+				        	
 			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
 				        	waveform.repaint();
 				        	
@@ -562,7 +605,31 @@ public class HeartrateDriverActivity extends BaseActivity {
 			}
 		});
 	}
-
+	
+	private int computeAverageHR() {
+		int index = 0;
+		int sum = 0;
+		for (int i = 0; i < hrArray.length; i++) {
+			if (hrArray[i] != 0) {
+				sum += hrArray[i];
+				index++;
+			}
+		}
+		return sum / index;
+	}
+	
+	private int detectHeartCondition() {
+		if (heartRate < 60) {
+			// Bradycardia condition
+			return 1;
+		} else if (heartRate > 100) {
+			// Tachycardia condition
+			return 2;
+		} else {
+			return 0;
+		}
+	}
+	
 	private class DataProcessor extends AsyncTask<Void, Void, Void> {
 
 		@Override
@@ -667,6 +734,15 @@ public class HeartrateDriverActivity extends BaseActivity {
         	startAction();
         	
             return true;
+        case R.id.view:
+            Intent i = new Intent(this,ViewActivity.class);
+            i.putExtra("xyseries", voltageArray);
+            startActivity(i);
+            return true;
+        case R.id.patientList:
+            Intent j = new Intent(this,DatabaseActivity.class);
+            startActivity(j);
+            return true;            
         case R.id.preferences:
         	doPreferences();
         	//registerForContextMenu(view_setting);

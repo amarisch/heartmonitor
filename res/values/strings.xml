@@ -11,6 +11,8 @@
     <string name="small_view">Small View</string>
     <string name="default_view">Default</string>
     <string name="preferences">Preferences</string>
+    <string name="view">View</string>
+    <string name="patientList">Patient List</string>    
     
     
     <string name="pref_send_report">Send crash reports</string>

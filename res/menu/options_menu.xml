@@ -6,5 +6,9 @@
 		android:title="Start" />
 		<item android:id="@+id/preferences"
 		android:title="Preferences" />
+		<item android:id="@+id/view"
+		android:title="View" />
+		<item android:id="@+id/patientList"
+		android:title="Patient List" />		
 		
     </menu>
