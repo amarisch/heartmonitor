@@ -33,7 +33,11 @@ import org.achartengine.renderer.XYSeriesRenderer.FillOutsideLine;
 import org.opendatakit.sensors.service.BaseActivity;
 import org.achartengine.renderer.XYSeriesRenderer;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ListActivity;
 import android.bluetooth.BluetoothAdapter;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -46,12 +50,15 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView.AdapterContextMenuInfo;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -75,6 +82,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	private static final String HR_SENSOR_ID_STR = "EKG_SENSOR_ID";
 	private static final String TAG = "SensorDriverActivity";
 	private static final int SENSOR_CONNECTION_COUNTER = 10;
+	private static final int DETECTION_TIME = 750; // CHANGE BACK TO 7500(30sec)
 	
 	//each physical sensor has a unique sensorID. Activities use this sensorID to communicate with sensors via the framework.
 	private String sensorID = null;
@@ -94,7 +102,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private static int[] voltageValues;
 	
-	private static int[] voltageArray = new int[7500];
+	private static int[] voltageArray = new int[DETECTION_TIME];
 	private static int[] hrArray = new int[30];
 	private static int hrIndex = 0;
 	
@@ -356,7 +364,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 			voltageSeries.clear();
 			waveform.repaint();
 			
-        	Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
+        	//Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
         	
 			Log.d(TAG, "startSensor succeed");
 		}
@@ -502,14 +510,11 @@ public class HeartrateDriverActivity extends BaseActivity {
 						Log.d(TAG, "VOLTAGE LENGTH: " + voltageValues.length);
 						for (int i = 0; i < voltageValues.length; i++) {
 						    
-				        	if (index == 7500) {
-				                Intent in = new Intent(HeartrateDriverActivity.this,ViewActivity.class);
-				                in.putExtra("xyseries", voltageArray);
-				                heartRate = computeAverageHR();
-				                in.putExtra("heartrate", heartRate);
-				                condition = detectHeartCondition();
-				                in.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
-				                startActivity(in);
+							//Done sampling
+				        	if (index >= DETECTION_TIME) {
+				        		// show dialog for the option of saving the trace to the database
+				        		showdialog();
+				 
 				                return;
 				        	}
 				        	
@@ -606,6 +611,57 @@ public class HeartrateDriverActivity extends BaseActivity {
 		});
 	}
 	
+	protected void showdialog() {
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+ 
+	    // Get the layout inflater
+	    LayoutInflater inflater = this.getLayoutInflater();
+	    
+		// set title
+		alertDialogBuilder.setTitle("Would you like to save this trace?");
+		 
+		// set dialog message
+		alertDialogBuilder
+			.setView(inflater.inflate(R.layout.dialoglayout, null))
+			//.setMessage("Name and Genger")
+			//.setCancelable(false)
+			.setPositiveButton("Discard",new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int id) {
+					// if this button is clicked, close the dialog
+					dialog.cancel();
+				}
+			  })
+			.setNegativeButton("Save",new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int id) {
+					// if this button is clicked, the trace is saved to the database
+					// and the view activity will pop up
+					Dialog f = (Dialog) dialog;
+					EditText text = (EditText) f.findViewById(R.id.name);
+
+					Patient pat = PatientOperations.addPatient(text.getText().toString(), voltageArray);
+					
+	                Intent in = new Intent(HeartrateDriverActivity.this,ViewActivity.class);
+	                in.putExtra("xyseries", voltageArray);
+	                // change back 
+	                heartRate = 0;
+	                //heartRate = computeAverageHR();
+	                in.putExtra("heartrate", heartRate);
+	                condition = detectHeartCondition();
+	                in.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
+	                startActivity(in);
+					dialog.cancel();
+					
+				}
+			});
+		 
+			// create alert dialog
+			AlertDialog alertDialog = alertDialogBuilder.create();
+		 
+			// show it
+			alertDialog.show();
+	}
+
+
 	private int computeAverageHR() {
 		int index = 0;
 		int sum = 0;
@@ -764,4 +820,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 	private void doPreferences() {
         startActivity(new Intent(this, SetPreferenceActivity.class));
     }
+
+
 }

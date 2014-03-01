@@ -19,6 +19,8 @@ public class ViewActivity extends Activity{
 	
 	private static final String TAG = "ViewActivity";
 	
+	private static final int DETECTION_TIME = 750;
+	
 	private TextView heartRateField, conditionField;
 	private int heartRate;
 	private char[] condition;
@@ -54,7 +56,7 @@ public class ViewActivity extends Activity{
 		// Initialize Plot setting
 		plot_init();
 		
-		for (int i = 0; i < 7500; i++) {
+		for (int i = 0; i < DETECTION_TIME; i++) {
 			voltageSeries.add(i, voltageArray[i]);
 		}
 		waveform.repaint();
@@ -106,7 +108,7 @@ public class ViewActivity extends Activity{
         renderer.setYAxisMax(100);
         renderer.setXAxisMin(0);
         renderer.setXAxisMax(1000);
-        renderer.setPanLimits(new double[] { 0, 7500, -100, 100 });
+        renderer.setPanLimits(new double[] { 0, DETECTION_TIME, -100, 100 });
         //renderer.setZoomLimits(new double[] { 0, 0, 0, 0 });
 
         rendererSeries = new XYSeriesRenderer();

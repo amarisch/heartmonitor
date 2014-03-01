@@ -2,6 +2,7 @@ package org.opendatakit.sensors.drivers.bt.heart;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import android.content.ContentValues;
@@ -14,8 +15,8 @@ public class PatientOperations {
 
 	// Database fields
 	private DataBaseWrapper dbHelper;
-	private String[] PATIENT_TABLE_COLUMNS = { DataBaseWrapper.PATIENT_ID, DataBaseWrapper.PATIENT_NAME };
-	private SQLiteDatabase database;
+	private static String[] PATIENT_TABLE_COLUMNS = { DataBaseWrapper.PATIENT_ID, DataBaseWrapper.PATIENT_NAME, DataBaseWrapper.PATIENT_ECG };
+	private static  SQLiteDatabase database;
 
 	public PatientOperations(Context context) {
 		dbHelper = new DataBaseWrapper(context);
@@ -29,16 +30,17 @@ public class PatientOperations {
 		dbHelper.close();
 	}
 
-	public Patient addPatient(String name) {
-
+	public static Patient addPatient(String name, int[] ecg) {
+/*
 		ContentValues values = new ContentValues();
 
 		values.put(DataBaseWrapper.PATIENT_NAME, name);
+		values.put(DataBaseWrapper.PATIENT_ECG, Arrays.toString(ecg));
 
-		long patId = database.insert(DataBaseWrapper.PATIENTS, null, values);
+		long patId = database.insert(DataBaseWrapper.TABLE_PATIENTS, null, values);
 
 		// now that the student is created return it ...
-		Cursor cursor = database.query(DataBaseWrapper.PATIENTS,
+		Cursor cursor = database.query(DataBaseWrapper.TABLE_PATIENTS,
 				PATIENT_TABLE_COLUMNS, DataBaseWrapper.PATIENT_ID + " = "
 						+ patId, null, null, null, null);
 
@@ -46,37 +48,40 @@ public class PatientOperations {
 
 		Patient newComment = parsePatient(cursor);
 		cursor.close();
+*/
+		Patient newComment = new Patient();
 		return newComment;
 	}
 
-	public void deletePatient(Patient comment) {
+	public static void deletePatient(Patient comment) {
 		long id = comment.getId();
 		System.out.println("Comment deleted with id: " + id);
-		database.delete(DataBaseWrapper.PATIENTS, DataBaseWrapper.PATIENT_ID
+		database.delete(DataBaseWrapper.TABLE_PATIENTS, DataBaseWrapper.PATIENT_ID
 				+ " = " + id, null);
 	}
 
-	public List getAllPatients() {
-		List students = new ArrayList();
+	public List<Patient> getAllPatients() {
+		List<Patient> patients = new ArrayList<Patient>();
 
-		Cursor cursor = database.query(DataBaseWrapper.PATIENTS,
+		Cursor cursor = database.query(DataBaseWrapper.TABLE_PATIENTS,
 				PATIENT_TABLE_COLUMNS, null, null, null, null, null);
 
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
-			Patient student = parsePatient(cursor);
-			students.add(student);
+			Patient patient = parsePatient(cursor);
+			patients.add(patient);
 			cursor.moveToNext();
 		}
 
 		cursor.close();
-		return students;
+		return patients;
 	}
 
-	private Patient parsePatient(Cursor cursor) {
+	private static Patient parsePatient(Cursor cursor) {
 		Patient patient = new Patient();
 		patient.setId((cursor.getInt(0)));
 		patient.setName(cursor.getString(1));
+		patient.setecg(cursor.getString(2));
 		return patient;
 	}
 }
