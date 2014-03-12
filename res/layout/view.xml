@@ -17,10 +17,10 @@
 
         	<TextView
         	    android:id="@+id/heartrateLabel"
-        	    android:layout_width="125dp"
+        	    android:layout_width="wrap_content"
         	    android:layout_height="wrap_content"
         	    android:text="@+string/heartRate"
-        	    android:textSize="21sp" >
+        	    android:textSize="18sp" >
 
 	        </TextView>
 	        
@@ -28,17 +28,35 @@
 	             android:id="@+id/heartRateField"
 	             android:layout_width="0dip"
 	             android:layout_height="wrap_content"
+	             android:layout_weight="0.35"
+	             android:textSize="18sp" >
+
+	        </TextView>
+	        
+	        <TextView
+        	    android:id="@+id/qrs_durationLabel"
+        	    android:layout_width="wrap_content"
+        	    android:layout_height="wrap_content"
+        	    android:text="@+string/qrs_duration"
+        	    android:textSize="18sp" >
+
+	        </TextView>
+	        
+	         <TextView
+	             android:id="@+id/qrs_durationField"
+	             android:layout_width="0dip"
+	             android:layout_height="wrap_content"
 	             android:layout_weight="0.46"
-	             android:textSize="21sp" >
+	             android:textSize="18sp" >
 
 	        </TextView>
 
 		    <TextView
 		        android:id="@+id/conditionLabel"
-		        android:layout_width="125dp"
+		        android:layout_width="wrap_content"
 		        android:layout_height="wrap_content"
 		        android:text="@+string/condition"
-		        android:textSize="21sp" >
+		        android:textSize="18sp" >
 
 	        </TextView>
 
@@ -47,7 +65,7 @@
 		        android:layout_width="0dip"
 		        android:layout_height="wrap_content"
 		        android:layout_weight="1"
-		        android:textSize="21sp" />
+		        android:textSize="18sp" />
 
 		</LinearLayout>
 </LinearLayout>

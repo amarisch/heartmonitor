@@ -82,7 +82,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	private static final String HR_SENSOR_ID_STR = "EKG_SENSOR_ID";
 	private static final String TAG = "SensorDriverActivity";
 	private static final int SENSOR_CONNECTION_COUNTER = 10;
-	private static final int DETECTION_TIME = 750; // CHANGE BACK TO 7500(30sec)
+	private static final int DETECTION_TIME = 7500; // CHANGE BACK TO 7500(30sec)
 	
 	//each physical sensor has a unique sensorID. Activities use this sensorID to communicate with sensors via the framework.
 	private String sensorID = null;
@@ -93,18 +93,24 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private static int heartRate;
 	
+	private static int qrs_duration ;
+	
 	private static int condition;
 	
 	private static final String[] HEART_CONDITION_OPTIONS = {
-        "Normal", "Bradycardia", "Tachycardia", "Premature Ventricular Contraction", "Premature Atrial Contraction"};
+        "Normal", "Bradycardia", "Tachycardia", "Abnormal QRS Complex", "Premature Atrial Contraction"};
 	
 	private TextView heartRateField;
 	
 	private static int[] voltageValues;
 	
 	private static int[] voltageArray = new int[DETECTION_TIME];
-	private static int[] hrArray = new int[30];
+	
+	private static int[] hrArray = new int[200];
 	private static int hrIndex = 0;
+	
+	private static int[] qrsArray = new int[200];
+	private static int qrsIndex = 0;
 	
 	//REMOVE LATER
 	private volatile int[] qrsValues;
@@ -126,6 +132,10 @@ public class HeartrateDriverActivity extends BaseActivity {
     private static XYSeriesRenderer qrsrendererSeries;
     private static GraphicalView waveform;
 
+    
+    // database
+	public static PatientOperations patientDBoperation;
+    
     // plot of the ecg
     private LinearLayout plot;
     private static int index = 0;
@@ -173,6 +183,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 		plot_init();
 
 		preference_settings();
+		
+		patientDBoperation = new PatientOperations(this);
+		patientDBoperation.open();
 
 	}
 
@@ -361,7 +374,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 			super.startSensor(sensorID);
 			index = 0;
 			hrIndex = 0;
+			qrsIndex = 0;
 			voltageSeries.clear();
+			qrsLines.clear();
 			waveform.repaint();
 			
         	//Toast.makeText(this, "Sensoring Started", Toast.LENGTH_SHORT).show();
@@ -399,6 +414,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	 */
 	private void returnSensorDataToCaller() {
 		Intent intent = new Intent();
+		intent.putExtra(HeartrateDriverImpl.QRS_DURATION, qrs_duration);
 		intent.putExtra(HeartrateDriverImpl.HEART_RATE, heartRate);
 		intent.putExtra(HeartrateDriverImpl.VOLTAGE_VALUES, voltageValues);
 		setResult(RESULT_OK, intent);
@@ -492,9 +508,14 @@ public class HeartrateDriverActivity extends BaseActivity {
 						//retrieve sensor data from each bundle and store it locally. 
 						
 						heartRate = aBundle.getInt(HeartrateDriverImpl.HEART_RATE);
+						qrs_duration = aBundle.getInt(HeartrateDriverImpl.QRS_DURATION);
 						
-						if (hrIndex < 29)
+						if (heartRate != 0)
 							hrArray[hrIndex++] = heartRate;
+						
+						if (qrs_duration != 0) {
+							qrsArray[qrsIndex++] = qrs_duration;
+						}
 						
 						
 						voltageValues = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
@@ -510,8 +531,14 @@ public class HeartrateDriverActivity extends BaseActivity {
 						Log.d(TAG, "VOLTAGE LENGTH: " + voltageValues.length);
 						for (int i = 0; i < voltageValues.length; i++) {
 						    
-							//Done sampling
+							/*
+							 * After a length of DETECTION_TIME, a dialog will pop up to save the trace
+							 * Done sampling
+							 */
 				        	if (index >= DETECTION_TIME) {
+				        		index = 0;
+				                Log.d(TAG, "qrsindex: " + qrsIndex);
+				                Log.d(TAG, "hrindex: " + hrIndex);
 				        		// show dialog for the option of saving the trace to the database
 				        		showdialog();
 				 
@@ -523,11 +550,13 @@ public class HeartrateDriverActivity extends BaseActivity {
 				        		qrsLines.clear();
 				        	}
 				        	
-				        	if (index != 0 && index % 250 == 0) {
-				                qrsLines.add((index - 0.000001) % DOMAIN_MAX, -500);
-				                qrsLines.add(index % DOMAIN_MAX, 500);
-				                qrsLines.add((index + 0.000001) % DOMAIN_MAX, -500);
+/*				        	if (index != 0 && index % 250 == 0) {
+				                qrsLines.add((index - 0.000001) % DOMAIN_MAX, -100);
+				                qrsLines.add(index % DOMAIN_MAX, 100);
+				                qrsLines.add((index + 0.000001) % DOMAIN_MAX, -100);
 				        	}
+*/
+				        	qrsLines.add(index % DOMAIN_MAX, qrsValues[i]);
 				        	
 				        	// write to the end of the screen, start from the beginning
 				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
@@ -597,7 +626,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 */
 						
 						//update UI
-						Log.d(TAG, "heartrate: " + heartRate);
+						Log.d(TAG, "heartrate: " + heartRate + ", qrs_duration: " + qrs_duration);
 						//Log.d(TAG, "beatcount: " + beatCount);
 						if (heartRate == 0) {
 							heartRateField.setText(String.valueOf("Detecting Heartrate"));
@@ -638,17 +667,16 @@ public class HeartrateDriverActivity extends BaseActivity {
 					Dialog f = (Dialog) dialog;
 					EditText text = (EditText) f.findViewById(R.id.name);
 
-					Patient pat = PatientOperations.addPatient(text.getText().toString(), voltageArray);
-					
-	                Intent in = new Intent(HeartrateDriverActivity.this,ViewActivity.class);
-	                in.putExtra("xyseries", voltageArray);
-	                // change back 
-	                heartRate = 0;
-	                //heartRate = computeAverageHR();
-	                in.putExtra("heartrate", heartRate);
+	                heartRate = computeAverageHR();
+	                qrs_duration = computeAverage_qrs_duration();
 	                condition = detectHeartCondition();
-	                in.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
-	                startActivity(in);
+	                
+	                // add new data into patient database
+					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					
+					// start View Activity
+					open_ViewActivity();
+
 					dialog.cancel();
 					
 				}
@@ -663,15 +691,21 @@ public class HeartrateDriverActivity extends BaseActivity {
 
 
 	private int computeAverageHR() {
-		int index = 0;
 		int sum = 0;
-		for (int i = 0; i < hrArray.length; i++) {
-			if (hrArray[i] != 0) {
-				sum += hrArray[i];
-				index++;
-			}
+		for (int i = 0; i < hrIndex; i++) {
+			sum += hrArray[i];
 		}
-		return sum / index;
+		// duration is the number of counts * 4ms
+		return sum / hrIndex;
+	}
+	
+	private int computeAverage_qrs_duration() {
+		int sum = 0;
+		for (int i = 0; i < qrsIndex; i++) {
+			sum += qrsArray[i];
+		}
+		// duration is the number of counts * 4ms
+		return sum / qrsIndex;
 	}
 	
 	private int detectHeartCondition() {
@@ -681,6 +715,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 		} else if (heartRate > 100) {
 			// Tachycardia condition
 			return 2;
+		} else if (qrs_duration > 110) { // normal is 60-110ms
+			return 3;
 		} else {
 			return 0;
 		}
@@ -791,30 +827,36 @@ public class HeartrateDriverActivity extends BaseActivity {
         	
             return true;
         case R.id.view:
-            Intent i = new Intent(this,ViewActivity.class);
-            i.putExtra("xyseries", voltageArray);
-            startActivity(i);
-            return true;
+        	
+        	open_ViewActivity();
+            
+        	return true;
         case R.id.patientList:
-            Intent j = new Intent(this,DatabaseActivity.class);
+            
+        	Intent j = new Intent(this,DatabaseActivity.class);
             startActivity(j);
+            
             return true;            
         case R.id.preferences:
+        	
         	doPreferences();
         	//registerForContextMenu(view_setting);
+        	
         	return true;
-/*        case R.id.preferences:
-        	doPreferences();
-            return true;
-        case R.id.menu_special_keys:
-            doDocumentKeys();
-            return true;
-        case R.id.menu_remote:
-        	sendStartCommand();
-        	return true;
-*/
         }        
         return false;
+    }
+    
+    private void open_ViewActivity() {
+        heartRate = computeAverageHR();
+        qrs_duration = computeAverage_qrs_duration();
+        condition = detectHeartCondition();
+        Intent i = new Intent(this,ViewActivity.class);
+        i.putExtra("xyseries", voltageArray);
+        i.putExtra("heartrate", heartRate);
+        i.putExtra("qrs_duration", qrs_duration);
+        i.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
+        startActivity(i);
     }
     
 	private void doPreferences() {

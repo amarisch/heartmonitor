@@ -59,6 +59,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	
 	public static final String VOLTAGE_VALUES = "VV";
 	public  static final String HEART_RATE = "HR";
+	public  static final String QRS_DURATION = "QRS_DURATION";
 	
 	//REMOVE LATER
 	public static final String QRS_VALUES = "QRS";
@@ -88,186 +89,17 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	}
 	
 	private ParsingState state = ParsingState.SYNCING;
-
-	private enum WaveState {
-		P,
-		Q,
-		R,
-		S,
-		T
-	}
 	
-	private WaveState wave_state = WaveState.P;
-	
-	private Bandpass bp =  new Bandpass();
+	private Lowpass bp =  new Lowpass();
 	private Average av = new Average();
 	private Integral inte = new Integral();
 	private Differential dif = new Differential();
-	private Highpass hp = new Highpass();
-	private Lowpass lp = new Lowpass();
+	private Differential dif2 = new Differential();
 	private DetectHeartrate dt = new DetectHeartrate();
-	
-	private Low_Smooth ls = new Low_Smooth();
-	private High_Smooth hs = new High_Smooth();
-	private Bandstop bs =  new Bandstop();
-	
-	
-	public class Low_Smooth {
-		public int prev = 0;
-	}
-	
-	public class High_Smooth {
-		public int prev = 0;
-	}
-	
-	
-	
-	/*
-	  Actually a low pass filter 
-	  0 Hz - 10 Hz
-	  gain = 1
-	  desired ripple = 5 dB
-	  actual ripple = 3.598728459661084 dB
-
-	* 20 Hz - 125 Hz
-	  gain = 0
-	  desired attenuation = -20 dB
-	  actual attenuation = -21.250073993748096 dB
-
-	*/
-	public static final int SAMPLEFILTER_TAP_NUM1 = 117;
-	public class Bandstop {
-		public int[] history = new int[SAMPLEFILTER_TAP_NUM1];
-		public int last_index;
-		public int[] filter_taps = new int[]{
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  1,
-				  1,
-				  1,
-				  1,
-				  1,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  1,
-				  1,
-				  -1,
-				  -2,
-				  -4,
-				  -5,
-				  -7,
-				  -9,
-				  -12,
-				  -14,
-				  -16,
-				  -17,
-				  -18,
-				  -18,
-				  -18,
-				  -17,
-				  -15,
-				  -11,
-				  -7,
-				  -2,
-				  4,
-				  12,
-				  19,
-				  27,
-				  36,
-				  44,
-				  52,
-				  59,
-				  66,
-				  71,
-				  75,
-				  77,
-				  78,
-				  77,
-				  75,
-				  71,
-				  66,
-				  59,
-				  52,
-				  44,
-				  36,
-				  27,
-				  19,
-				  12,
-				  4,
-				  -2,
-				  -7,
-				  -11,
-				  -15,
-				  -17,
-				  -18,
-				  -18,
-				  -18,
-				  -17,
-				  -16,
-				  -14,
-				  -12,
-				  -9,
-				  -7,
-				  -5,
-				  -4,
-				  -2,
-				  -1,
-				  1,
-				  1,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  2,
-				  1,
-				  1,
-				  1,
-				  1,
-				  1,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0,
-				  0
-				};
-	}
-	
 
 	
 	/*
-
-	FIR filter designed with
-	http://t-filter.appspot.com
-
-	sampling frequency: 250 Hz
+	  Lowpass filter with sampling frequency: 250 Hz
 
 	* 0 Hz - 4 Hz
 	  gain = 1
@@ -278,11 +110,9 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	  gain = 0
 	  desired attenuation = -80 dB
 	  actual attenuation = -87.54790793759072 dB
-
 	*/
-
-	public static final int SAMPLEFILTER_TAP_NUM = 51; //67;
-	public class Bandpass {
+	public static final int SAMPLEFILTER_TAP_NUM = 51;
+	public class Lowpass {
 		public int[] history = new int[SAMPLEFILTER_TAP_NUM];
 		public int last_index;
 		public int[] filter_taps = new int[]{
@@ -341,22 +171,13 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	}
 	
 	
-	// Data filtering stuff
-/*	public class Bandpass {
-		
-		public int xnt = 0;
-		public int xm1 = 0;
-		public int xm2 = 0;
-		public int ynt = 0;
-		public int ym1 = 0;
-		public int ym2 = 0;
-	}
-*/	
-	private static final int AVE_NUM = 7; //# of samples used for average filter
 	
+	
+	private static final int AVE_NUM = 7; //# of samples used for average filter
 	public class Average {
 		public int[] x = new int[AVE_NUM - 1];
 	}
+	
 	
 	public class Integral {
 		public int[] x = new int[32];
@@ -364,22 +185,11 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		public long sum = 0;
 	}
 	
+	
 	public class Differential {
 		public int[] x_derv = new int[4];
 	}
 
-	public class Highpass {
-		public int y1 = 0;
-		public int[] x = new int[66];
-		public int n = 32;
-	}
-	
-	public class Lowpass {
-		public int y1 = 0;
-		public int y2 = 0;
-		public int[] x = new int[26];
-		public int n = 12;
-	}
 	
 	public class DetectHeartrate {
 		  public int threshold = 0, stage = 0, peak = 0;
@@ -387,11 +197,13 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		  public int[] hr = new int[5];
 	}
 	
+	
 	public HeartrateDriverImpl() {
 		super();
 		
 		// data reporting parameters. These are the key-value pairs returned by this driver.
 		sensorParams.add(new SensorParameter(HEART_RATE, SensorParameter.Type.INTEGER, SensorParameter.Purpose.DATA, "Heart Rate"));
+		sensorParams.add(new SensorParameter(QRS_DURATION, SensorParameter.Type.INTEGER, SensorParameter.Purpose.DATA, "QRS Duration"));
 		sensorParams.add(new SensorParameter(VOLTAGE_VALUES, SensorParameter.Type.INTEGERARRAY, SensorParameter.Purpose.DATA, "Voltage values"));
 		Log.d(TAG," constructed" );
 	}
@@ -430,17 +242,6 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		}
 //		Log.d(TAG,"dataBuffer size after load: " + dataBuffer.size());	
 
-/*		
-		// if we did not get a full packet, we wait to receive the next one
-		if (dataBuffer.size() < PAYLOAD_SIZE + MAX_SYNC_BYTES) {
-			// Copy data back into remaining buffer
-			byte[] newRemainingData = new byte[dataBuffer.size()];
-			for (int i = 0; i < dataBuffer.size(); i++) {
-				newRemainingData[i] = dataBuffer.get(i);
-			}
-			return new SensorDataParseResponse(allData, newRemainingData);
-		}
-*/
 		parseData(dataBuffer, allData);
 
 		return new SensorDataParseResponse(allData, null);	
@@ -492,6 +293,8 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		}
 	}
 	
+	private int seqNo = 0;
+	
 	private void processCompletePacket(List<Bundle> parsedDataBundles) {
 		//mt, seqNo, msg, crc
 //		Log.d(TAG,"processCompletePacket payloadCounter: " + payloadCounter);
@@ -501,7 +304,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		int msgType = payloadBuffer[0] & 0xff;
 		int seqLow = payloadBuffer[1] & 0xff; // sequence number low byte
 		int seqHi = payloadBuffer[2] & 0xff; // sequence number high byte
-		int seqNo = seqHi << 8 | seqLow; // 2 byte sequence number
+		seqNo = seqHi << 8 | seqLow; // 2 byte sequence number
 		int receivedCRC = payloadBuffer[PAYLOAD_SIZE - 1] & 0xff;
 		byte calcCRC = 0;
 		
@@ -521,7 +324,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 			switch(msgType) {
 			case MSG_READING:
 //				Log.d(TAG,"Got voltage READING msg");
-//				Log.d(TAG, "SEQ #: " + seqNo);
+				Log.d(TAG, "SEQ #: " + seqNo);
 				Bundle tempReading = getVoltSamples(payloadBuffer);
 				parsedDataBundles.add(tempReading);
 				break;
@@ -538,6 +341,9 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		//Log.d(TAG,strBuff.toString());
 	}
 
+	private int qrswidth_count = 0;
+	private int qrs_duration = 0;
+	
 	Bundle getVoltSamples(byte[] voltSamples) {
 		// data_array is a buffer to store the voltage values
 		int[] data_array = new int[VOLTAGE_SAMPLE_SIZE];
@@ -548,109 +354,86 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		int counter = 0;
 		
 		for(int i = MSG_DATA_BEGIN_INDEX; i < MSG_DATA_END_INDEX - 1; i+=2) {
-			//Log.d(TAG,"lower: " + (voltSamples[i] & 0xff));
-			//Log.d(TAG,"upper: " + (voltSamples[i + 1] << 8));
+
 			int voltage = (voltSamples[i + 1] << 8) + (voltSamples[i] & 0xff);
 //			Log.d(TAG,"voltage: " + voltage + "(" + (voltSamples[i] & 0xff) + " + " + (voltSamples[i + 1] << 8));
 			
-			// REMOVE LATER
-			qrs_array[counter] = voltage - 412; //lowpass_smooth(voltage - 512);
-			
-			
-			
-			voltage = apply_filters(voltage - 512);
-			
-			
-			
-/*			
-			// dampen the noises of small waves by averaging the voltage with 0
-			if (voltage < 5 && voltage > -5) {
-				if (counter == 0)
-					data_array[counter] = voltage / 2;
-				else
-					data_array[counter] = (voltage + data_array[counter - 1]) / 2;
-			} else {
-				data_array[counter] = voltage;
+			/* heartrate detection
+			 * Fist apply algorithms to detect qrs
+			 * then detect the timing of qrs occurrence
+			 */
+			int result = -200; // a random low number to distinguish from the high# to indicate qrs pulse
+			int qrs = qrs_calculation(voltage);
+			// wait until the fingers have been on the metal plate for awhile before heartrate detection
+			if (seqNo >= 8) { 
+				result = detect_heartrate(qrs);
 			}
-*/			
+			
+
+			qrs_array[counter] = result;
+			
+			
+			/* Filters for display */
+			voltage = apply_filters(voltage - 512);
+			qrs_duration_detection(qrs);
+
 			data_array[counter] = voltage;
+			
 			counter++;
 		}
 		Bundle sample = new Bundle();
 
-		//sample.putString(DataSeries.SAMPLE, tempstr);
-		sample.putIntArray(VOLTAGE_VALUES, data_array);
-		sample.putInt(HEART_RATE, heartrate);
 		
-		//REMOVE LATER
+		sample.putIntArray(VOLTAGE_VALUES, data_array);
 		sample.putIntArray(QRS_VALUES, qrs_array);
+		
+		sample.putInt(HEART_RATE, heartrate);		
+		sample.putInt(QRS_DURATION, qrs_duration);
+		qrs_duration = 0;
+
+
 
 		return sample;
 	}
 	
+	private void qrs_duration_detection(int qrs) {
+		int slope = apply_diff(qrs, dif2);
+		if (slope > 0) {
+
+			qrswidth_count++;
+
+		} else {
+			
+			/* 
+			 * Store qrs duration data into qrs_duration array
+			 * at least 40ms qrs duration, anything below is probably noise or from T wave
+			 */
+			if (qrswidth_count > 10) {
+				// duration (in ms) is equal to qrswidth_count * 4ms
+				qrs_duration = qrswidth_count * 4;
+				//Log.d(TAG,"qrs width: " + qrswidth_count);
+			}
+			qrswidth_count = 0;
+			
+		}
+	}
+	
 	// for calculating QRS and heartrate
-	private int qrs_detection(int voltage) {
-		int qrs = apply_diff(voltage);
+	private int qrs_calculation(int voltage) {
+		int qrs = apply_diff(voltage, dif);
 		qrs = qrs * qrs;
 		qrs = apply_integ(qrs);
-
 		//Log.d(TAG, "QRS: " + qrs);
-		detect_heartrate(qrs * qrs);
 		return qrs;
 		
 	}
 	
 	private int apply_filters(int voltage) {
-
-		//int qrs = data[buf_ind] - ADC_OFFSET;
-		//filter_data[buf_ind] = apply_avg(apply_bandpass(qrs));
-		//voltage = apply_bandpass(voltage);
-		//voltage = apply_avg(voltage);
-		//voltage = apply_highpass(voltage);
-		//voltage = highpass_smooth(voltage);
-		//voltage = apply_bandpass(voltage);
-		//voltage = apply_lowpass(voltage);
-		//voltage = apply_lowpass(voltage);
-		
-		int qrs = qrs_detection(voltage);
-		
-		//voltage = highpass_smooth(voltage);
-		//voltage = lowpass_smooth(voltage);
-		//voltage = apply_avg(voltage);
-		//voltage = apply_lowpass(voltage);
-		//voltage = apply_lowpass(voltage);
-		voltage = apply_bandpass(voltage);
-//		voltage = band_stop(voltage);
-		
+		voltage = apply_lowpass(voltage);
 		return voltage;
-		//return voltage + 512;
-	}
-
-	private int band_stop(int raw) {
-		  bs.history[bs.last_index++] = raw;
-		  if(bs.last_index == SAMPLEFILTER_TAP_NUM1)
-			  bs.last_index = 0;
-		  
-		  long acc = 0;
-		  int index = bs.last_index, i;
-		  for(i = 0; i < SAMPLEFILTER_TAP_NUM1; ++i) {
-		    index = index != 0 ? index-1 : SAMPLEFILTER_TAP_NUM1-1;
-		    acc += (long)bs.history[index] * bs.filter_taps[i];
-		  }
-		  return (int) (acc >> 10);		
 	}
 	
-	private int highpass_smooth(int raw) {
-		hs.prev = (int) (raw - (hs.prev + 0.15 * (raw - hs.prev)));
-		return hs.prev;
-	}
-	
-	private int lowpass_smooth(int raw) {
-		ls.prev = (int) (ls.prev + 0.15 * (raw - ls.prev));
-		return ls.prev;
-	}
-	
-	private int apply_bandpass(int raw) {
+	private int apply_lowpass(int raw) {
 		  bp.history[bp.last_index++] = raw;
 		  if(bp.last_index == SAMPLEFILTER_TAP_NUM)
 			  bp.last_index = 0;
@@ -664,47 +447,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		  return (int) (acc >> 10);
 	}
 	
-	
-/*	private int apply_bandpass(int raw) {
-		bp.xnt = raw;
-		
-		bp.ynt = (bp.ym1 + bp.ym1 >> 1 + bp.ym1 >> 2 + bp.ym1 >> 3) +
-				(bp.ym2 >> 1 + bp.ym2 >> 2 + bp.ym2 >> 3 +
-				bp.ym2 >> 5 + bp.ym2 >> 6) + bp.xnt - bp.xm2;
-		bp.xm2 = bp.xm1;
-		bp.xm1 = bp.xnt;
-		bp.ym2 = bp.ym1;
-		bp.ym1 = bp.ynt;
-		return bp.ynt;
-	}
-*/	
-	private int apply_lowpass(int raw) {
-		int y0;
-		
-		lp.x[lp.n] = lp.x[lp.n + 13] = raw;
-		y0 = (lp.y1 << 1) - lp.y2 + lp.x[lp.n] - (lp.x[lp.n + 6] << 1) + lp.x[lp.n + 12];
-		lp.y2 = lp.y1;
-		lp.y1 = y0;
-		y0 >>= 5;
-		if (--lp.n < 0)
-			lp.n = 12;
-		
-		return y0;
-	}
-
-	private int apply_highpass(int raw) {
-		int y0;
-		
-		hp.x[hp.n] = hp.x[hp.n + 33] = raw;
-		y0 = hp.y1 + hp.x[hp.n] - hp.x[hp.n + 32];
-		hp.y1 = y0;
-		if (--hp.n < 0)
-			hp.n = 32;
-		
-		return hp.x[hp.n+16] - (y0 >> 5);
-	}
-
-	private int apply_diff(int raw) {
+	private int apply_diff(int raw, Differential dif) {
 		int y, i;
 		
 		y = (raw << 1) + dif.x_derv[3] - dif.x_derv[1] - (dif.x_derv[0] << 1);
@@ -752,82 +495,84 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		return x0;
 	}
 	
+	
+	
+	/*
+	 * If need to get system time, use
+	 * long time = System.currentTimeMillis();
+	 */
+	
 	private int heartrate = 0;
-	private long t_stop = 0;
-	private long t_start = 0;
-	private long t_first = 0;
-	private void detect_heartrate(int data) {
+	private int prev_heartrate = 0;
+	private double prev_rr_interval = 0;
+	private int rr_irregularity = 0;
+	
+	private int detect_heartrate(int data) {
 
-	  dt.t++;
+		dt.t++;
 	  
-	  // if we go pass 4sec without reasonable heartrate detection, reset the values
-	  if (dt.t > 1000) {
-	    dt.stage = 0;
-	    dt.threshold = 0;
-	    dt.t = 0;
-	  }
+		// if we go pass 4sec without reasonable heartrate detection, reset the values
+		if (dt.t > 1000) {
+			dt.stage = 0;
+			dt.threshold = 0;
+			dt.t = 0;
+		}
 	  
-	  if (dt.stage == 0 && dt.t > 20) {
-	    if (data > dt.threshold) {
-	      //printf("in ");
-	      dt.stage = 1;
-	      dt.peak = data;
-	    }
-	  } else if (dt.stage == 1) {
-	    if (data > dt.peak) {
-	      dt.peak = data;	
-	    } else if (data < 0.5*dt.peak) {
-	      dt.stage = 0;
-	      dt.threshold = (int) ((0.125 * (dt.peak * 0.5)) + 0.875 * dt.threshold);
+		if (dt.stage == 0 && dt.t > 20) {
+			
+			if (data > dt.threshold) {
+				//printf("in ");
+				dt.stage = 1;
+				dt.peak = data;
+			}
+			
+		} else if (dt.stage == 1) {
+			
+			if (data > dt.peak) {
+				dt.peak = data;	
+			} else if (data < 0.50*dt.peak) {
+				dt.stage = 0;
+				dt.threshold = (int) ((0.125 * (dt.peak * 0.50)) + 0.875 * dt.threshold);
 
-	      // time calls
-	      t_stop = System.currentTimeMillis();                 // get stop time in milisec
-	      // keep track of first timestamp
-	      if (t_first == 0) {
-	    	  t_first = t_stop;
-	      }
-	      //Log.d(TAG,"t_stop: " + t_stop + ", t_start: " + t_start);
+			
+				// time in sec between adjacent R waves
+				double rr_interval =  dt.t * 0.004;
+				
+				/*
+				 * check regularity of RR Interval
+				 * Considered irregular if the difference between 2 RR intervals is greater than 120ms
+				 */
+				if (prev_rr_interval != 0 && Math.abs(rr_interval - prev_rr_interval) > 0.12) {
+					rr_irregularity++;
+				}
+				prev_rr_interval = rr_interval;
+				
+				// multiple d_t by 60 seconds to find bpm
+				double h = 60 / rr_interval;
+				Log.d(TAG,"RR Interval: " + rr_interval + ", d_t in sec: " + (double) rr_interval/1000 + ", h: " + h);
 	      
-	      long d_t = t_stop - t_start;    // calculate delta t
 	      
-	      t_start = t_stop;                          // save stop time as next start time
-	      double d_t_in_sec = (double) d_t/1000;
-	      double h = 60.0/ d_t_in_sec;
-	      //Log.d(TAG,"delta_t: " + d_t + ", d_t in sec: " + (double) d_t/1000 + ", h: " + h);
+				// only take the heartrate value if it's in a reasonable range: less than 300bpm
+				if (h < 300) {
+					
+					prev_heartrate = heartrate;
+					
+					// heartrate adjustment to prevent drastic changes
+					if (prev_heartrate != 0)
+						h = (int) ((h)*0.50 + 0.50*prev_heartrate);
+   	  
+					if (seqNo >= 20)
+						heartrate = (int) h;
+					
+				}
 	      
+				Log.d(TAG, "out. t = " + dt.t + ", thresh = " + dt.threshold + ", peak = " + dt.peak + ", hr = " + heartrate);
 	      
-	      // only take the heartrate value if it's in a reasonable range: less than 300bpm
-	      if (h < 300) {
-	    	  if (dt.hr[0] != 0)
-		    	  h = (int) ((h)*0.125 + 0.875*dt.hr[4]);
-	    	  //Log.d(TAG, "HEARTRATE: " + h);
-/*	    	  if (h < dt.hr[0] + 5 && h > dt.hr[0] - 5) { // the new heartrate should differ 5 heartrates ago  by < 10
-	    		  // average of 5 heartrates 
-	    		  heartrate = (dt.hr[1] + dt.hr[2] + dt.hr[3] + dt.hr[4] + (int) h) / 5;
-	    	  } else {
-	    		  heartrate = 0; // heartrate still changing too much, don't display it yet
-	    	  }
-*/	    	  
-	    	  if (t_stop - t_first >= 5000) {
-	    		  if (dt.hr[0] != 0) {
-	    			  heartrate = (dt.hr[1] + dt.hr[2] + dt.hr[3] + dt.hr[4] + (int) h) / 5;
-	    		  } else {
-	    			  heartrate = (int) h;
-	    		  }
-	    	  } else {
-	    		  heartrate = 0; // heartrate still changing too much, don't display it yet
-	    	  }
-	    	  
-	    	  for (int i = 0; i < 4; ++i)
-	    		  dt.hr[i] = dt.hr[i+1];
-	    	  dt.hr[4] = (int)h;
-	      }
-	      
-	      Log.d(TAG, "out. t = " + dt.t + ", thresh = " + dt.threshold + ", peak = " + dt.peak + ", hr = " + heartrate);
-	      
-	      dt.t = 0;
-	    }
-	  }
+				dt.t = 0;
+				return -50;
+			}
+		}
+		return -200;
 	}
 }
 

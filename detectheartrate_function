@@ -1,0 +1,67 @@
+	private void detect_heartrate(int data) {
+
+	  dt.t++;
+	  
+	  // if we go pass 4sec without reasonable heartrate detection, reset the values
+	  if (dt.t > 1000) {
+	    dt.stage = 0;
+	    dt.threshold = 0;
+	    dt.t = 0;
+	  }
+	  
+	  if (dt.stage == 0 && dt.t > 20) {
+	    if (data > dt.threshold) {
+	      //printf("in ");
+	      dt.stage = 1;
+	      dt.peak = data;
+	    }
+	  } else if (dt.stage == 1) {
+	    if (data > dt.peak) {
+	      dt.peak = data;	
+	    } else if (data < 0.5*dt.peak) {
+	      dt.stage = 0;
+	      dt.threshold = (int) ((0.125 * (dt.peak * 0.5)) + 0.875 * dt.threshold);
+
+	      // time calls
+	      t_stop = System.currentTimeMillis();                 // get stop time in milisec
+	      // keep track of first timestamp
+	      if (t_first == 0) {
+	    	  t_first = t_stop;
+	      }
+	      //Log.d(TAG,"t_stop: " + t_stop + ", t_start: " + t_start);
+	      
+	      long d_t = t_stop - t_start;    // calculate delta t
+	      
+	      t_start = t_stop;                          // save stop time as next start time
+	      double d_t_in_sec = (double) d_t/1000;
+	      double h = 60.0/ d_t_in_sec;
+	      //Log.d(TAG,"delta_t: " + d_t + ", d_t in sec: " + (double) d_t/1000 + ", h: " + h);
+	      
+	      
+	      // only take the heartrate value if it's in a reasonable range: less than 300bpm
+	      if (h < 300) {
+	    	  if (dt.hr[0] != 0) {
+		    	  h = (int) ((h)*0.125 + 0.875*dt.hr[4]);
+	    	  }
+	    	  
+	    	  if (t_stop - t_first >= 5000) {
+	    		  if (dt.hr[0] != 0) {
+	    			  heartrate = (dt.hr[1] + dt.hr[2] + dt.hr[3] + dt.hr[4] + (int) h) / 5;
+	    		  } else {
+	    			  heartrate = (int) h;
+	    		  }
+	    	  } else {
+	    		  heartrate = 0; // heartrate still changing too much, don't display it yet
+	    	  }
+	    	  
+	    	  for (int i = 0; i < 4; ++i)
+	    		  dt.hr[i] = dt.hr[i+1];
+	    	  dt.hr[4] = (int)h;
+	      }
+	      
+	      Log.d(TAG, "out. t = " + dt.t + ", thresh = " + dt.threshold + ", peak = " + dt.peak + ", hr = " + heartrate);
+	      
+	      dt.t = 0;
+	    }
+	  }
+	}x

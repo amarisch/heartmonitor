@@ -8,10 +8,14 @@ import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -19,11 +23,12 @@ public class ViewActivity extends Activity{
 	
 	private static final String TAG = "ViewActivity";
 	
-	private static final int DETECTION_TIME = 750;
+	private static final int DETECTION_TIME = 7500;
 	
-	private TextView heartRateField, conditionField;
+	private TextView heartRateField, qrs_durationField, conditionField;
 	private int heartRate;
-	private char[] condition;
+	private int qrs_duration;
+	private String condition;
 	
 	// For AChartEngine main plot
 	private static int[] voltageArray;
@@ -45,11 +50,14 @@ public class ViewActivity extends Activity{
         setContentView(R.layout.view);
 
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
-		conditionField = (TextView) findViewById(R.id.conditionField);       
+		conditionField = (TextView) findViewById(R.id.conditionField);     
+		qrs_durationField = (TextView) findViewById(R.id.qrs_durationField);  
         
         voltageArray = getIntent().getIntArrayExtra("xyseries");
         heartRate = getIntent().getIntExtra("heartrate", 0);
-        condition = getIntent().getCharArrayExtra("condition");
+        qrs_duration = getIntent().getIntExtra("qrs_duration", 0);
+        condition = getIntent().getStringExtra("condition");
+        		
         Log.d(TAG,"item count: " + voltageArray.length);
         
 		plot = (LinearLayout) findViewById(R.id.voltage);
@@ -61,12 +69,13 @@ public class ViewActivity extends Activity{
 		}
 		waveform.repaint();
 		
-		heartRateField.setText(String.valueOf(heartRate));
+		heartRateField.setText("  " + String.valueOf(heartRate));
+		qrs_durationField.setText("  " + String.valueOf(qrs_duration));
 
 		if (condition == null) {
-			conditionField.setText("detecting");
+			conditionField.setText("  " + "detecting");
 		} else {
-			conditionField.setText(String.valueOf(condition));
+			conditionField.setText("  " + String.valueOf(condition));
 		}
 
 
@@ -126,7 +135,42 @@ public class ViewActivity extends Activity{
         waveform.repaint();
 
         plot.addView(waveform);
-        
-        
     }
+	
+	public boolean onCreateOptionsMenu(Menu menu) {
+	    MenuInflater inflater = getMenuInflater();
+	    inflater.inflate(R.menu.viewactivity_options_menu, menu);
+	    return true;
+	}
+	
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+
+        case R.id.patientList:
+            Intent j = new Intent(this,DatabaseActivity.class);
+            startActivity(j);
+            return true;            
+        case R.id.preferences:
+        	doPreferences();
+        	//registerForContextMenu(view_setting);
+        	return true;
+/*        case R.id.preferences:
+        	doPreferences();
+            return true;
+        case R.id.menu_special_keys:
+            doDocumentKeys();
+            return true;
+        case R.id.menu_remote:
+        	sendStartCommand();
+        	return true;
+*/
+        }        
+        return false;
+    }
+    
+	private void doPreferences() {
+        startActivity(new Intent(this, SetPreferenceActivity.class));
+    }
+
 }
