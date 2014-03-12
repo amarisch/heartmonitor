@@ -23,9 +23,18 @@
             android:layout_weight="1"
             android:textSize="21sp" >
         </TextView>
+        
+		<TextView
+            android:id="@+id/activityStatusField"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="16sp" >
+        </TextView>
+         
 	</LinearLayout>
 	    <LinearLayout 
-	        android:id="@+id/lygforce"
+	        android:id="@+id/ecgplot"
 	        android:orientation="horizontal"
 	        android:layout_width="fill_parent"
 	        android:layout_height="0dip"

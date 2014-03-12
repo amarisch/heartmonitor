@@ -31,44 +31,35 @@ public final class R {
         public static final int icon=0x7f020000;
     }
     public static final class id {
-        public static final int LinearLayout1=0x7f090005;
+        public static final int activityStatusField=0x7f090007;
         public static final int addBtn=0x7f090001;
-        public static final int conditionField=0x7f090014;
-        public static final int conditionLabel=0x7f090013;
-        public static final int connect=0x7f090018;
-        public static final int connectButton=0x7f09000b;
-        public static final int default_view=0x7f090017;
+        public static final int conditionField=0x7f09000e;
+        public static final int conditionLabel=0x7f09000d;
+        public static final int connect=0x7f090012;
+        public static final int default_view=0x7f090011;
         public static final int deleteBtn=0x7f090002;
-        public static final int dynamicPlot=0x7f09000d;
+        public static final int ecgplot=0x7f090008;
         public static final int editText1=0x7f090000;
-        public static final int graphButton=0x7f09000a;
-        public static final int heartRateField=0x7f090007;
-        public static final int heartRateLabel=0x7f090006;
-        public static final int heartrateLabel=0x7f090010;
-        public static final int large_view=0x7f090015;
-        public static final int lygforce=0x7f09000e;
+        public static final int heartRateField=0x7f090006;
+        public static final int heartRateLabel=0x7f090005;
+        public static final int heartrateLabel=0x7f09000a;
+        public static final int large_view=0x7f09000f;
         public static final int name=0x7f090004;
-        public static final int patientList=0x7f09001c;
-        public static final int preferences=0x7f09001a;
-        public static final int qrs_durationField=0x7f090012;
-        public static final int qrs_durationLabel=0x7f090011;
+        public static final int patientList=0x7f090016;
+        public static final int preferences=0x7f090014;
+        public static final int qrs_durationField=0x7f09000c;
+        public static final int qrs_durationLabel=0x7f09000b;
         public static final int searchBtn=0x7f090003;
-        public static final int small_view=0x7f090016;
-        public static final int start=0x7f090019;
-        public static final int startButton=0x7f09000c;
-        public static final int timeField=0x7f090009;
-        public static final int timeLabel=0x7f090008;
-        public static final int view=0x7f09001b;
-        public static final int voltage=0x7f09000f;
+        public static final int small_view=0x7f090010;
+        public static final int start=0x7f090013;
+        public static final int view=0x7f090015;
+        public static final int voltage=0x7f090009;
     }
     public static final class layout {
         public static final int databaseview=0x7f030000;
         public static final int dialoglayout=0x7f030001;
-        public static final int mainview=0x7f030002;
-        public static final int oldmainview=0x7f030003;
-        public static final int oldplot=0x7f030004;
-        public static final int plot=0x7f030005;
-        public static final int view=0x7f030006;
+        public static final int plot=0x7f030002;
+        public static final int view=0x7f030003;
     }
     public static final class menu {
         public static final int actions=0x7f080000;
@@ -98,7 +89,6 @@ public final class R {
         public static final int qrs_duration=0x7f070005;
         public static final int small_view=0x7f070009;
         public static final int start=0x7f070007;
-        public static final int time=0x7f070017;
         public static final int view=0x7f07000c;
     }
     public static final class xml {

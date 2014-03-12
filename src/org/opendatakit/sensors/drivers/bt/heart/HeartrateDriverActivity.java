@@ -102,6 +102,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 	
 	private TextView heartRateField;
 	
+	private TextView activityStatusField;
+	
 	private static int[] voltageValues;
 	
 	private static int[] voltageArray = new int[DETECTION_TIME];
@@ -116,8 +118,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 	private volatile int[] qrsValues;
 	
 	private DataProcessor sensorDataProcessor;
-	
-//	private Button connectButton, startButton;
 	
 	private ConnectionThread connectionThread;
 	
@@ -174,57 +174,27 @@ public class HeartrateDriverActivity extends BaseActivity {
 		
 		setContentView(R.layout.plot);
 		
-		plot = (LinearLayout) findViewById(R.id.lygforce);
+		plot = (LinearLayout) findViewById(R.id.ecgplot);
 		
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
-		//conditionField = (TextView) findViewById(R.id.conditionField);
+		activityStatusField = (TextView) findViewById(R.id.activityStatusField);
+
 		
 		// Initialize Plot setting
 		plot_init();
 
-		preference_settings();
+		// Restore previous sensorID
+		restore_sensorID();
 		
+		// Initialize and open patient database
 		patientDBoperation = new PatientOperations(this);
 		patientDBoperation.open();
 
 	}
 
-
-	private void readPrefs() {
-		viewId = readIntPref(VIEW_KEY, viewId, VIEW_SCHEMES.length - 1);
-	}
-	
-    private int readIntPref(String key, int defaultValue, int maxValue) {
-        int val;
-        try {
-            val = Integer.parseInt(
-                mPrefs.getString(key, Integer.toString(defaultValue)));
-            Log.d(TAG,"val: " + val);
-        } catch (NumberFormatException e) {
-            val = defaultValue;
-        }
-        val = Math.max(0, Math.min(val, maxValue));
-        Log.d(TAG,"val: " + val);
-        return val;
-    }
-
-    // update changes made to preferences
-    private void updatePrefs() {
-        setView();
-
-        plot.removeAllViews();  //This remove previous graph
-        plot.addView(waveform); //This loads the graph again
-    }
-
-    // set the new view
-	private void setView() {
-        int[] scheme = VIEW_SCHEMES[viewId];
-        renderer.setYAxisMin(scheme[0]);
-        renderer.setYAxisMax(scheme[1]);
-        Log.d(TAG,"set view: " + scheme[0] + ", " + scheme[1]);
-	}
-
-
+	/*
+	 * Initializes the ecgplot
+	 */
 	public void plot_init() {
         dataset = new XYMultipleSeriesDataset();
         renderer = new XYMultipleSeriesRenderer();
@@ -289,8 +259,11 @@ public class HeartrateDriverActivity extends BaseActivity {
         
     }
 	
-	// To store different sensor IDs
-    private void preference_settings() {
+	/*
+	 * If sensorID(of a specific foneAstra) is stored earlier, this function restores the
+	 * sensorID, so the application doesn't have to go through device discovery again 
+	 */
+    private void restore_sensorID() {
 		SharedPreferences appPreferences = getPreferences(MODE_PRIVATE);
 		
 		//restore the sensorID if we stored it earlier
@@ -312,30 +285,21 @@ public class HeartrateDriverActivity extends BaseActivity {
 	protected void onResume() {
 		super.onResume();
 		
-		sensorDataProcessor = new DataProcessor();
-		sensorDataProcessor.execute();
-		
     	readPrefs();
     	updatePrefs();
-		
-    	//startAction();
     	
-/*		connectButton.setEnabled(false);
-		startButton.setEnabled(false);		
-		
+    	
+    	activityStatusField.setText(String.valueOf("detecting, place both hands on the pads"));
+    	
 		if(!isConnectedToSensor) {
-			connectButton.setEnabled(true);
-			startButton.setEnabled(false);	
-		}
-		else if (isStarted) { 
-			connectButton.setEnabled(false);
-			startButton.setEnabled(false);	;
-		}
-		else {
-			connectButton.setEnabled(false);
-			startButton.setEnabled(true);	
-		}
-*/			
+			activityStatusField.setText(String.valueOf("not connected"));	
+		} else if (isStarted) { 
+			sensorDataProcessor = new DataProcessor();
+			sensorDataProcessor.execute();
+			activityStatusField.setText(String.valueOf("detecting, place both hands on the pads"));
+		} else {
+			activityStatusField.setText(String.valueOf("connected:" + sensorID));	
+		}			
 	}
 	
     protected void onPause() {
@@ -343,13 +307,23 @@ public class HeartrateDriverActivity extends BaseActivity {
 		sensorDataProcessor.cancel(true);
     }
 	
+    /*
+     * Connects to a FoneAstra device
+     */
 	public void connectAction() {
 
+		BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		if(mBluetoothAdapter == null) {
+			Toast.makeText(getApplicationContext(), "Device doesn't support Bluetooth", Toast.LENGTH_LONG).show();
+		}
+	    
+	    if(!mBluetoothAdapter.isEnabled()) {
+	    	Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE); 
+	    	startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+	    	//Toast.makeText(getApplicationContext(), "Enabling Bluetooth!!", Toast.LENGTH_LONG).show();
+	    }
+		
 		if(sensorID == null) {
-			//BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-			//Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-		    //startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-			
 			//launch the framework's discovery process if we don't already have a sensor ID.
 			//the discovery process allows users to discover sensors and assign drivers to them.
 			//launchSensorDiscovery basically starts an activity for result in the framework, 
@@ -365,7 +339,13 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}
 	}
 	
+	/*
+	 * Starts/restarts data collection and plotting
+	 */
 	public void startAction() {
+		
+		sensorDataProcessor = new DataProcessor();
+		sensorDataProcessor.execute();
 		
 		try {
 			//startSensor needs to be called after connecting to the physical sensor. 
@@ -387,7 +367,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 			rex.printStackTrace();
 		}
 		
-//		startButton.setEnabled(false);
+		activityStatusField.setText(String.valueOf("detecting, place both hands on the pads"));
 		isStarted = true;
 		
 	}
@@ -457,23 +437,19 @@ public class HeartrateDriverActivity extends BaseActivity {
 				}
 			}
 		}
-		
 	}
-
-
+	
 	/*
-	 * The Zephyr heart rate monitor is a bluetooth enabled sensor. so we connect in a thread, waiting for the connection to get established.
+	 * Heart rate monitor is a bluetooth enabled sensor. so we connect in a thread, waiting for the connection to get established.
 	 */
 	private void connectToSensor() {
-		// disable the connection if it already exist
 		if(connectionThread != null && connectionThread.isAlive()) {
 			connectionThread.stopConnectionThread();
 		}
 		
-		// disable the connectButton
 		runOnUiThread(new Runnable() {
 			public void run() {
-//				connectButton.setEnabled(false);
+				activityStatusField.setText(String.valueOf("connecting..."));
 			}
 		});
 
@@ -536,7 +512,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 							 * Done sampling
 							 */
 				        	if (index >= DETECTION_TIME) {
-				        		index = 0;
 				                Log.d(TAG, "qrsindex: " + qrsIndex);
 				                Log.d(TAG, "hrindex: " + hrIndex);
 				        		// show dialog for the option of saving the trace to the database
@@ -560,7 +535,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 				        	
 				        	// write to the end of the screen, start from the beginning
 				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
-				        	voltageArray[index] = voltageValues[i];
+				        	
+				        	if (index < DETECTION_TIME) {
+				        		voltageArray[index] = voltageValues[i];
+				        	}
 				        	index++;
 				        	
 			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
@@ -657,7 +635,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 			.setPositiveButton("Discard",new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog,int id) {
 					// if this button is clicked, close the dialog
-					dialog.cancel();
+					index = 0;
+					hrIndex = 0;
+					qrsIndex = 0;
+					dialog.dismiss();
 				}
 			  })
 			.setNegativeButton("Save",new DialogInterface.OnClickListener() {
@@ -674,10 +655,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 	                // add new data into patient database
 					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
 					
+					dialog.dismiss();
+					
 					// start View Activity
 					open_ViewActivity();
-
-					dialog.cancel();
 					
 				}
 			});
@@ -793,16 +774,12 @@ public class HeartrateDriverActivity extends BaseActivity {
 				
 				runOnUiThread(new Runnable() {
 					public void run() {
-/*
 						if(!isConnectedToSensor) {
-							connectButton.setEnabled(true);
-							startButton.setEnabled(false);							
+							activityStatusField.setText(String.valueOf("not connected"));						
 						}
 						else {
-							connectButton.setEnabled(false);
-							startButton.setEnabled(true);							
+							activityStatusField.setText(String.valueOf("connected:" + sensorID));						
 						}
-*/
 					}
 				});
 
@@ -813,6 +790,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}
 	}
 	
+	/*
+	 * Options Menu
+	 */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -833,12 +813,11 @@ public class HeartrateDriverActivity extends BaseActivity {
         	return true;
         case R.id.patientList:
             
-        	Intent j = new Intent(this,DatabaseActivity.class);
-            startActivity(j);
+        	open_DatabaseActivity();
             
             return true;            
         case R.id.preferences:
-        	
+  
         	doPreferences();
         	//registerForContextMenu(view_setting);
         	
@@ -847,6 +826,21 @@ public class HeartrateDriverActivity extends BaseActivity {
         return false;
     }
     
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//           Functions in this section are for opening various activity classes                  //
+///////////////////////////////////////////////////////////////////////////////////////////////////      
+    
+    /*
+     * Opens DatabaseActivity
+     */
+    private void open_DatabaseActivity() {
+    	Intent j = new Intent(this,DatabaseActivity.class);
+        startActivity(j);
+    }
+    
+    /*
+     * Opens ViewActivity
+     */
     private void open_ViewActivity() {
         heartRate = computeAverageHR();
         qrs_duration = computeAverage_qrs_duration();
@@ -859,9 +853,55 @@ public class HeartrateDriverActivity extends BaseActivity {
         startActivity(i);
     }
     
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//                   Functions in this section are for Preferences settings                      //
+///////////////////////////////////////////////////////////////////////////////////////////////////    
+    
 	private void doPreferences() {
         startActivity(new Intent(this, SetPreferenceActivity.class));
     }
 
+    /*
+     *  update changes made to preferences
+     */
+    private void updatePrefs() {
+        setView();
 
+        plot.removeAllViews();  //This remove previous graph
+        plot.addView(waveform); //This loads the graph again
+    }
+    
+	private void readPrefs() {
+		viewId = readIntPref(VIEW_KEY, viewId, VIEW_SCHEMES.length - 1);
+	}
+	
+    private int readIntPref(String key, int defaultValue, int maxValue) {
+        int val;
+        try {
+            val = Integer.parseInt(
+                mPrefs.getString(key, Integer.toString(defaultValue)));
+            Log.d(TAG,"val: " + val);
+        } catch (NumberFormatException e) {
+            val = defaultValue;
+        }
+        val = Math.max(0, Math.min(val, maxValue));
+        Log.d(TAG,"val: " + val);
+        return val;
+    }
+
+    /*
+     * set the new view in response to preference setting
+     */
+	private void setView() {
+        int[] scheme = VIEW_SCHEMES[viewId];
+        renderer.setYAxisMin(scheme[0]);
+        renderer.setYAxisMax(scheme[1]);
+        Log.d(TAG,"set view: " + scheme[0] + ", " + scheme[1]);
+	}
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                               //
+/////////////////////////////////////////////////////////////////////////////////////////////////// 
+	
 }
