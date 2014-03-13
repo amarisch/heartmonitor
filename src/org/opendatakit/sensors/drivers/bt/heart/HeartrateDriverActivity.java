@@ -79,51 +79,64 @@ import android.widget.Toast;
  */
 public class HeartrateDriverActivity extends BaseActivity {
  
-	private static final String HR_SENSOR_ID_STR = "EKG_SENSOR_ID";
 	private static final String TAG = "SensorDriverActivity";
+	
+////////////////////// Connection and Sensor related Variables and Constants //////////////////////
+
+	private static final String HR_SENSOR_ID_STR = "EKG_SENSOR_ID";	
 	private static final int SENSOR_CONNECTION_COUNTER = 10;
-	private static final int DETECTION_TIME = 7500; // CHANGE BACK TO 7500(30sec)
+	private static final int DETECTION_TIME = 7500;
+	private static final int REQUEST_ENABLE_BT = 2;
 	
 	//each physical sensor has a unique sensorID. Activities use this sensorID to communicate with sensors via the framework.
 	private String sensorID = null;
-	
 	private boolean isConnectedToSensor = false;
-	
 	private boolean isStarted = false;
+	private DataProcessor sensorDataProcessor;
+	private ConnectionThread connectionThread;
 	
-	private static int heartRate;
 	
-	private static int qrs_duration ;
-	
-	private static int condition;
-	
-	private static final String[] HEART_CONDITION_OPTIONS = {
-        "Normal", "Bradycardia", "Tachycardia", "Abnormal QRS Complex", "Premature Atrial Contraction"};
+/////////////////////// Variables for res/layout/plot.xml /////////////////////////////////////////	
 	
 	private TextView heartRateField;
-	
 	private TextView activityStatusField;
+    private LinearLayout plot;
 	
+    
+/////////////////////////// Heartrate Detection Variables & Constants ///////////////////////////////
+    
+	private static final String[] HEART_CONDITION_OPTIONS = {
+        "Normal", "Bradycardia", "Tachycardia", "Abnormal QRS Complex", "Premature Atrial Contraction"};
+    
+	private static int heartRate;
+	private static int qrs_duration;
+	private static int condition;
+    // voltage array from HeartrateDRiverImpl
 	private static int[] voltageValues;
-	
+	// peak detection array from HeartrateDRiverImpl
+	private volatile int[] qrsValues;
+	// voltage array displayed and stored in the database
 	private static int[] voltageArray = new int[DETECTION_TIME];
-	
+    private static int index = 0;
+	// Heartrate array
 	private static int[] hrArray = new int[200];
 	private static int hrIndex = 0;
-	
+	// qrs duration array
 	private static int[] qrsArray = new int[200];
 	private static int qrsIndex = 0;
 	
-	//REMOVE LATER
-	private volatile int[] qrsValues;
-	
-	private DataProcessor sensorDataProcessor;
-	
-	private ConnectionThread connectionThread;
-	
-	private static final int REQUEST_ENABLE_BT = 2;
 
-	// For AChartEngine main plot
+///////////////////////// ECG Plot Constants and Variables /////////////////////////////////
+	
+	private static final int SAMPLE_RATE = 250; // 250 samples per second
+	private static final int SAMPLE_SIZE = 1000; //200 sample_size and 50 pdu_size
+	private static final int RANGE_MIN = -100;
+	private static final int RANGE_MAX = 100;
+	private static final int DOMAIN_MIN = 0;
+	private static final int DOMAIN_MAX = 1000; 
+	private static final int DOMAIN_STEP_VALUE = (int) ((SAMPLE_SIZE / SAMPLE_RATE) / 0.04); // each square is 0.04sec
+	private static final int RANGE_STEP_VALUE = (int) (RANGE_MAX - RANGE_MIN) / 10;
+	
 	private XYSeries voltageSeries;
 	private XYSeries qrsLines;
     private static XYMultipleSeriesDataset dataset;
@@ -133,54 +146,43 @@ public class HeartrateDriverActivity extends BaseActivity {
     private static GraphicalView waveform;
 
     
-    // database
-	public static PatientOperations patientDBoperation;
-    
-    // plot of the ecg
-    private LinearLayout plot;
-    private static int index = 0;
+///////////////////////// Database Variable ///////////////////////////////////////////////////////
+	
+    public static PatientOperations patientDBoperation;
     
     
-    // Alert dialog
+    
+//////////////////////////////////////////// Alert dialog Variables ///////////////////////////////
     private static AlertDialog alertDialog;
     
-    // Preference settings
-    private SharedPreferences mPrefs;
     
+//////////////////////////////// Preferences Variables & Constants ///////////////////////////////
+
+    private SharedPreferences mPrefs;
+    // View Setting
     private static final String VIEW_KEY = "viewsetting";
     private int viewId = 1;
     
     private static final int[][] VIEW_SCHEMES = {
         {-50, 50}, {-100, 100}, {-200, 200}};
+	
+
+////////////////////////////// End of Variables and Constants Declaration /////////////////////////
     
-	// Constants for the plot display
-	private static final int SAMPLE_RATE = 250; // 250 samples per second
-	private static final int SAMPLE_SIZE = 1000; //200 sample_size and 50 pdu_size
-	private static final int RANGE_MIN = -100; //300;
-	private static final int RANGE_MAX = 100; //700;
-	private static final int DOMAIN_MIN = 0;
-	private static final int DOMAIN_MAX = 1000; 
-	private static final int DOMAIN_STEP_VALUE = (int) ((SAMPLE_SIZE / SAMPLE_RATE) / 0.04); // each square is 0.04sec
-	private static final int RANGE_STEP_VALUE = (int) (RANGE_MAX - RANGE_MIN) / 10;
-	
-	
-	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
 		// automatically set orientation to landscape
-		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-		
-		mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        readPrefs();
-		
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);		
 		setContentView(R.layout.plot);
-		
 		plot = (LinearLayout) findViewById(R.id.ecgplot);
-		
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
 		activityStatusField = (TextView) findViewById(R.id.activityStatusField);
+		
+		// Preferences setting
+		mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        readPrefs();
 		
 		// Initialize Plot setting
 		plot_init();
@@ -276,12 +278,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 				Log.d(TAG,"restored sensorID: " + sensorID);
 			}
 		}	
-	}
-
-	public boolean onCreateOptionsMenu(Menu menu) {
-	    MenuInflater inflater = getMenuInflater();
-	    inflater.inflate(R.menu.options_menu, menu);
-	    return true;
 	}
 	
 	protected void onResume() {
@@ -449,24 +445,112 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}
 	}
 	
-	/*
-	 * Heart rate monitor is a bluetooth enabled sensor. so we connect in a thread, waiting for the connection to get established.
-	 */
-	private void connectToSensor() {
-		if(connectionThread != null && connectionThread.isAlive()) {
-			connectionThread.stopConnectionThread();
-		}
-		
-		runOnUiThread(new Runnable() {
-			public void run() {
-				activityStatusField.setText(String.valueOf("connecting..."));
-			}
-		});
+	protected void showdialog() {
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+ 
+	    // Get the layout inflater
+	    LayoutInflater inflater = this.getLayoutInflater();
+	    
+		// set title
+		alertDialogBuilder.setTitle("Would you like to save this trace?");
+		 
+		// set dialog message
+		alertDialogBuilder
+			.setView(inflater.inflate(R.layout.dialoglayout, null))
+			//.setMessage("Name and Genger")
+			//.setCancelable(false)
+			.setPositiveButton("Discard",new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int id) {
+					// if this button is clicked, close the dialog
+					index = 0;
+					hrIndex = 0;
+					qrsIndex = 0;
+					alertDialog.dismiss();
+					sensorDataProcessor = new DataProcessor();
+					sensorDataProcessor.execute();
+				}
+			  })
+			.setNegativeButton("Save",new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,int id) {
+					// if this button is clicked, the trace is saved to the database
+					// and the view activity will pop up
+					Dialog f = (Dialog) dialog;
+					EditText text = (EditText) f.findViewById(R.id.name);
 
-		connectionThread = new ConnectionThread();
-		connectionThread.start();
+	                heartRate = computeAverageHR();
+	                qrs_duration = computeAverage_qrs_duration();
+	                condition = detectHeartCondition();
+	                
+	                // add new data into patient database
+					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					
+					// start View Activity
+					open_ViewActivity();
+					
+					alertDialog.dismiss();
+				}
+			});
+		 
+			// create alert dialog
+			alertDialog = alertDialogBuilder.create();
+		 
+			// show it
+			alertDialog.show();
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//                  Functions that analyze different Heart-related components                    //
+/////////////////////////////////////////////////////////////////////////////////////////////////// 	
+
+	private int computeAverageHR() {
+		int sum = 0;
+		for (int i = 0; i < hrIndex; i++) {
+			sum += hrArray[i];
+		}
+		// duration is the number of counts * 4ms
+		if (hrIndex != 0)
+			return sum / hrIndex;
+		else 
+			return 0;
 	}
 	
+	private int computeAverage_qrs_duration() {
+		int sum = 0;
+		for (int i = 0; i < qrsIndex; i++) {
+			sum += qrsArray[i];
+		}
+		// duration is the number of counts * 4ms
+		if (qrsIndex != 0)
+			return sum / qrsIndex;
+		else 
+			return 0;
+
+	}
+	
+	private int detectHeartCondition() {
+		if (heartRate < 60) {
+			// Bradycardia condition
+			return 1;
+		} else if (heartRate > 100) {
+			// Tachycardia condition
+			return 2;
+		} else if (qrs_duration > 110) { // normal is 60-110ms
+			return 3;
+		} else {
+			return 0;
+		}
+	}
+	
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//                           DataProcessing and Connection Functions                             //
+///////////////////////////////////////////////////////////////////////////////////////////////////  
+
+	/*
+	 * The main function of this activity. Receives values from calling getSensorData
+	 * Responsible for displaying the data to the users and putting the data to corresponding
+	 * data structures for processing and storage of the data
+	 */
 	private void processData() {
 
 		if (!isConnectedToSensor) {
@@ -618,99 +702,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 		});
 	}
 	
-	protected void showdialog() {
-		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
- 
-	    // Get the layout inflater
-	    LayoutInflater inflater = this.getLayoutInflater();
-	    
-		// set title
-		alertDialogBuilder.setTitle("Would you like to save this trace?");
-		 
-		// set dialog message
-		alertDialogBuilder
-			.setView(inflater.inflate(R.layout.dialoglayout, null))
-			//.setMessage("Name and Genger")
-			//.setCancelable(false)
-			.setPositiveButton("Discard",new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,int id) {
-					// if this button is clicked, close the dialog
-					index = 0;
-					hrIndex = 0;
-					qrsIndex = 0;
-					alertDialog.dismiss();
-					sensorDataProcessor = new DataProcessor();
-					sensorDataProcessor.execute();
-				}
-			  })
-			.setNegativeButton("Save",new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog,int id) {
-					// if this button is clicked, the trace is saved to the database
-					// and the view activity will pop up
-					Dialog f = (Dialog) dialog;
-					EditText text = (EditText) f.findViewById(R.id.name);
-
-	                heartRate = computeAverageHR();
-	                qrs_duration = computeAverage_qrs_duration();
-	                condition = detectHeartCondition();
-	                
-	                // add new data into patient database
-					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
-					
-					// start View Activity
-					open_ViewActivity();
-					
-					alertDialog.dismiss();
-				}
-			});
-		 
-			// create alert dialog
-			alertDialog = alertDialogBuilder.create();
-		 
-			// show it
-			alertDialog.show();
-	}
-
-
-	private int computeAverageHR() {
-		int sum = 0;
-		for (int i = 0; i < hrIndex; i++) {
-			sum += hrArray[i];
-		}
-		// duration is the number of counts * 4ms
-		if (hrIndex != 0)
-			return sum / hrIndex;
-		else 
-			return 0;
-	}
-	
-	private int computeAverage_qrs_duration() {
-		int sum = 0;
-		for (int i = 0; i < qrsIndex; i++) {
-			sum += qrsArray[i];
-		}
-		// duration is the number of counts * 4ms
-		if (qrsIndex != 0)
-			return sum / qrsIndex;
-		else 
-			return 0;
-
-	}
-	
-	private int detectHeartCondition() {
-		if (heartRate < 60) {
-			// Bradycardia condition
-			return 1;
-		} else if (heartRate > 100) {
-			// Tachycardia condition
-			return 2;
-		} else if (qrs_duration > 110) { // normal is 60-110ms
-			return 3;
-		} else {
-			return 0;
-		}
-	}
-	
 	private class DataProcessor extends AsyncTask<Void, Void, Void> {
 
 		@Override
@@ -728,6 +719,23 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}
 	}
 	
+	/*
+	 * Heart rate monitor is a bluetooth enabled sensor. so we connect in a thread, waiting for the connection to get established.
+	 */
+	private void connectToSensor() {
+		if(connectionThread != null && connectionThread.isAlive()) {
+			connectionThread.stopConnectionThread();
+		}
+		
+		runOnUiThread(new Runnable() {
+			public void run() {
+				activityStatusField.setText(String.valueOf("connecting..."));
+			}
+		});
+
+		connectionThread = new ConnectionThread();
+		connectionThread.start();
+	}
 	
 	private class ConnectionThread extends Thread {
 		private String TAG = "ConnectionThread";
@@ -798,9 +806,17 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}
 	}
 	
-	/*
-	 * Options Menu
-	 */
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//                          Functions related to the options menu                                //
+///////////////////////////////////////////////////////////////////////////////////////////////////  	
+	
+	public boolean onCreateOptionsMenu(Menu menu) {
+	    MenuInflater inflater = getMenuInflater();
+	    inflater.inflate(R.menu.options_menu, menu);
+	    return true;
+	}
+	
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -833,6 +849,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         }        
         return false;
     }
+    
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //           Functions in this section are for opening various activity classes                  //
