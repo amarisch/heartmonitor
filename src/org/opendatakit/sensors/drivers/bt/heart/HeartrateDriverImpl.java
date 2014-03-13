@@ -60,8 +60,6 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	public static final String VOLTAGE_VALUES = "VV";
 	public  static final String HEART_RATE = "HR";
 	public  static final String QRS_DURATION = "QRS_DURATION";
-	
-	//REMOVE LATER
 	public static final String QRS_VALUES = "QRS";
 	
 	private static final int PAYLOAD_SIZE = 128; //including crc
@@ -70,12 +68,8 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	private static final int VOLTAGE_SAMPLE_SIZE = 50; // sending 50 voltage readings at once 
 	private static final int MSG_DATA_BEGIN_INDEX = 3;
 	private static final int MSG_DATA_END_INDEX = 3 + VOLTAGE_SAMPLE_SIZE * 2;
-
-	// qrs peaks index array
-	private static int[] qrsPeakIndex = new int[10];
 	
-	
-	//message types
+	// message types Not currently used
 	private static final int MSG_READING = 1; //1 temp reading per msg
 	
 	int syncCounter = 0;
@@ -90,8 +84,8 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	
 	private ParsingState state = ParsingState.SYNCING;
 	
+	// For filtering and analysis
 	private Lowpass bp =  new Lowpass();
-	private Average av = new Average();
 	private Integral inte = new Integral();
 	private Differential dif = new Differential();
 	private Differential dif2 = new Differential();
@@ -172,7 +166,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 	
 	
 	
-	
+	// currently not used
 	private static final int AVE_NUM = 7; //# of samples used for average filter
 	public class Average {
 		public int[] x = new int[AVE_NUM - 1];
@@ -341,6 +335,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		//Log.d(TAG,strBuff.toString());
 	}
 
+	// qrs_duration detection
 	private int qrswidth_count = 0;
 	private int qrs_duration = 0;
 	
@@ -362,7 +357,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 			 * Fist apply algorithms to detect qrs
 			 * then detect the timing of qrs occurrence
 			 */
-			int result = -200; // a random low number to distinguish from the high# to indicate qrs pulse
+			int result = -200; // a random low number to distinguish from the high # to indicate qrs pulse
 			int qrs = qrs_calculation(voltage);
 			// wait until the fingers have been on the metal plate for awhile before heartrate detection
 			if (seqNo >= 8) { 
@@ -383,7 +378,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		}
 		Bundle sample = new Bundle();
 
-		
+
 		sample.putIntArray(VOLTAGE_VALUES, data_array);
 		sample.putIntArray(QRS_VALUES, qrs_array);
 		
@@ -418,7 +413,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		}
 	}
 	
-	// for calculating QRS and heartrate
+	// for calculating heartrate
 	private int qrs_calculation(int voltage) {
 		int qrs = apply_diff(voltage, dif);
 		qrs = qrs * qrs;
@@ -428,6 +423,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		
 	}
 	
+	// filters used for display
 	private int apply_filters(int voltage) {
 		voltage = apply_lowpass(voltage);
 		return voltage;
@@ -479,6 +475,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		return y;
 	}
 
+/*
 	private int apply_avg(int raw) {
 		
 		int x0 = raw;
@@ -494,7 +491,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 
 		return x0;
 	}
-	
+*/	
 	
 	
 	/*

@@ -6,7 +6,7 @@
     <string name="graph">graph</string>
     <string name="heartRate">Heart Rate</string>
     <string name="qrs_duration">QRS Duration(in ms)</string>
-    <string name="condition">Condition</string>
+    <string name="regularity">Regularity</string>
     <string name="start">Start</string>
     <string name="large_view">Large View</string>
     <string name="small_view">Small View</string>

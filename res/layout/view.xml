@@ -52,16 +52,16 @@
 	        </TextView>
 
 		    <TextView
-		        android:id="@+id/conditionLabel"
+		        android:id="@+id/regularityLabel"
 		        android:layout_width="wrap_content"
 		        android:layout_height="wrap_content"
-		        android:text="@+string/condition"
+		        android:text="@+string/regularity"
 		        android:textSize="18sp" >
 
 	        </TextView>
 
 		    <TextView
-		        android:id="@+id/conditionField"
+		        android:id="@+id/regularityField"
 		        android:layout_width="0dip"
 		        android:layout_height="wrap_content"
 		        android:layout_weight="1"

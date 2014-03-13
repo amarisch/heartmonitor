@@ -141,6 +141,9 @@ public class HeartrateDriverActivity extends BaseActivity {
     private static int index = 0;
     
     
+    // Alert dialog
+    private static AlertDialog alertDialog;
+    
     // Preference settings
     private SharedPreferences mPrefs;
     
@@ -178,7 +181,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 		
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
 		activityStatusField = (TextView) findViewById(R.id.activityStatusField);
-
 		
 		// Initialize Plot setting
 		plot_init();
@@ -302,9 +304,17 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}			
 	}
 	
+	public void onBackPressed() {
+/*		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+		alertDialog = alertDialogBuilder.create();
+		alertDialog.dismiss();
+		sensorDataProcessor = new DataProcessor();
+		sensorDataProcessor.execute();
+*/
+	}
+	
     protected void onPause() {
         super.onPause();
-		sensorDataProcessor.cancel(true);
     }
 	
     /*
@@ -495,8 +505,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 						
 						
 						voltageValues = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
-						
-						// REMOVE later
 						qrsValues = aBundle.getIntArray(HeartrateDriverImpl.QRS_VALUES);
 						
 						
@@ -514,6 +522,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 				        	if (index >= DETECTION_TIME) {
 				                Log.d(TAG, "qrsindex: " + qrsIndex);
 				                Log.d(TAG, "hrindex: " + hrIndex);
+				                sensorDataProcessor.cancel(true);
 				        		// show dialog for the option of saving the trace to the database
 				        		showdialog();
 				 
@@ -524,13 +533,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 				        		voltageSeries.clear();
 				        		qrsLines.clear();
 				        	}
-				        	
-/*				        	if (index != 0 && index % 250 == 0) {
-				                qrsLines.add((index - 0.000001) % DOMAIN_MAX, -100);
-				                qrsLines.add(index % DOMAIN_MAX, 100);
-				                qrsLines.add((index + 0.000001) % DOMAIN_MAX, -100);
-				        	}
-*/
+
 				        	qrsLines.add(index % DOMAIN_MAX, qrsValues[i]);
 				        	
 				        	// write to the end of the screen, start from the beginning
@@ -541,13 +544,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 				        	}
 				        	index++;
 				        	
-			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
 				        	waveform.repaint();
 				        	
 					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
 
-
-				        
 				        }
 						
 						
@@ -638,7 +638,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 					index = 0;
 					hrIndex = 0;
 					qrsIndex = 0;
-					dialog.dismiss();
+					alertDialog.dismiss();
+					sensorDataProcessor = new DataProcessor();
+					sensorDataProcessor.execute();
 				}
 			  })
 			.setNegativeButton("Save",new DialogInterface.OnClickListener() {
@@ -655,16 +657,15 @@ public class HeartrateDriverActivity extends BaseActivity {
 	                // add new data into patient database
 					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
 					
-					dialog.dismiss();
-					
 					// start View Activity
 					open_ViewActivity();
 					
+					alertDialog.dismiss();
 				}
 			});
 		 
 			// create alert dialog
-			AlertDialog alertDialog = alertDialogBuilder.create();
+			alertDialog = alertDialogBuilder.create();
 		 
 			// show it
 			alertDialog.show();
@@ -677,7 +678,10 @@ public class HeartrateDriverActivity extends BaseActivity {
 			sum += hrArray[i];
 		}
 		// duration is the number of counts * 4ms
-		return sum / hrIndex;
+		if (hrIndex != 0)
+			return sum / hrIndex;
+		else 
+			return 0;
 	}
 	
 	private int computeAverage_qrs_duration() {
@@ -686,7 +690,11 @@ public class HeartrateDriverActivity extends BaseActivity {
 			sum += qrsArray[i];
 		}
 		// duration is the number of counts * 4ms
-		return sum / qrsIndex;
+		if (qrsIndex != 0)
+			return sum / qrsIndex;
+		else 
+			return 0;
+
 	}
 	
 	private int detectHeartCondition() {
@@ -849,7 +857,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         i.putExtra("xyseries", voltageArray);
         i.putExtra("heartrate", heartRate);
         i.putExtra("qrs_duration", qrs_duration);
-        i.putExtra("condition", HEART_CONDITION_OPTIONS[condition]);
+        i.putExtra("regularity", HEART_CONDITION_OPTIONS[condition]);
         startActivity(i);
     }
     

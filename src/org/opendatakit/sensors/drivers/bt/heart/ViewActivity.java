@@ -25,10 +25,13 @@ public class ViewActivity extends Activity{
 	
 	private static final int DETECTION_TIME = 7500;
 	
-	private TextView heartRateField, qrs_durationField, conditionField;
+	// For view.xml in layout folder
+    private LinearLayout plot;
+	private TextView heartRateField, qrs_durationField, regularityField;
+	
 	private int heartRate;
 	private int qrs_duration;
-	private String condition;
+	private String regularity;
 	
 	// For AChartEngine main plot
 	private static int[] voltageArray;
@@ -38,8 +41,7 @@ public class ViewActivity extends Activity{
     private static XYSeriesRenderer rendererSeries;
     private static GraphicalView waveform;
 
-    // plot of the ecg
-    private LinearLayout plot;
+
 
     private static int index = 0;
     
@@ -50,13 +52,13 @@ public class ViewActivity extends Activity{
         setContentView(R.layout.view);
 
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
-		conditionField = (TextView) findViewById(R.id.conditionField);     
+		regularityField = (TextView) findViewById(R.id.regularityField);     
 		qrs_durationField = (TextView) findViewById(R.id.qrs_durationField);  
         
         voltageArray = getIntent().getIntArrayExtra("xyseries");
         heartRate = getIntent().getIntExtra("heartrate", 0);
         qrs_duration = getIntent().getIntExtra("qrs_duration", 0);
-        condition = getIntent().getStringExtra("condition");
+        regularity = getIntent().getStringExtra("regularity");
         		
         Log.d(TAG,"item count: " + voltageArray.length);
         
@@ -72,14 +74,14 @@ public class ViewActivity extends Activity{
 		heartRateField.setText("  " + String.valueOf(heartRate));
 		qrs_durationField.setText("  " + String.valueOf(qrs_duration));
 
-		if (condition == null) {
-			conditionField.setText("  " + "detecting");
+		if (regularity == null) {
+			regularityField.setText("  " + "detecting");
 		} else {
-			conditionField.setText("  " + String.valueOf(condition));
+			regularityField.setText("  " + String.valueOf(regularity));
 		}
-
-
  	}
+ 	
+ 	
 	public void plot_init() {
         dataset = new XYMultipleSeriesDataset();
         renderer = new XYMultipleSeriesRenderer();
@@ -155,16 +157,6 @@ public class ViewActivity extends Activity{
         	doPreferences();
         	//registerForContextMenu(view_setting);
         	return true;
-/*        case R.id.preferences:
-        	doPreferences();
-            return true;
-        case R.id.menu_special_keys:
-            doDocumentKeys();
-            return true;
-        case R.id.menu_remote:
-        	sendStartCommand();
-        	return true;
-*/
         }        
         return false;
     }

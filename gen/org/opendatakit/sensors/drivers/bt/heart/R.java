@@ -33,8 +33,6 @@ public final class R {
     public static final class id {
         public static final int activityStatusField=0x7f090007;
         public static final int addBtn=0x7f090001;
-        public static final int conditionField=0x7f09000e;
-        public static final int conditionLabel=0x7f09000d;
         public static final int connect=0x7f090012;
         public static final int default_view=0x7f090011;
         public static final int deleteBtn=0x7f090002;
@@ -49,6 +47,8 @@ public final class R {
         public static final int preferences=0x7f090014;
         public static final int qrs_durationField=0x7f09000c;
         public static final int qrs_durationLabel=0x7f09000b;
+        public static final int regularityField=0x7f09000e;
+        public static final int regularityLabel=0x7f09000d;
         public static final int searchBtn=0x7f090003;
         public static final int small_view=0x7f090010;
         public static final int start=0x7f090013;
@@ -68,7 +68,6 @@ public final class R {
     }
     public static final class string {
         public static final int app_name=0x7f070001;
-        public static final int condition=0x7f070006;
         public static final int connect=0x7f070002;
         public static final int default_view=0x7f07000a;
         public static final int graph=0x7f070003;
@@ -87,6 +86,7 @@ public final class R {
         public static final int pref_user_profile=0x7f070015;
         public static final int preferences=0x7f07000b;
         public static final int qrs_duration=0x7f070005;
+        public static final int regularity=0x7f070006;
         public static final int small_view=0x7f070009;
         public static final int start=0x7f070007;
         public static final int view=0x7f07000c;
