@@ -32,7 +32,7 @@ public class PatientOperations {
 	}
 
 	
-	public Patient addPatient(String name) {
+	public Patient_old addPatient(String name) {
 
 		ContentValues values = new ContentValues();
 
@@ -50,11 +50,11 @@ public class PatientOperations {
 		Patient newComment = parsePatient(cursor);
 		cursor.close();
 */
-		Patient newComment = new Patient();
+		Patient_old newComment = new Patient_old();
 		return newComment;
 	}
 	
-	public Patient addPatient_complete(String name, int[] ecg, int hr, String condition) {
+	public Patient_old addPatient_complete(String name, int[] ecg, int hr, String condition) {
 
 		ContentValues values = new ContentValues();
 
@@ -75,26 +75,26 @@ public class PatientOperations {
 		Patient newComment = parsePatient(cursor);
 		cursor.close();
 */
-		Patient newComment = new Patient();
+		Patient_old newComment = new Patient_old();
 		return newComment;
 	}
 
-	public static void deletePatient(Patient comment) {
+	public static void deletePatient(Patient_old comment) {
 		long id = comment.getId();
 		System.out.println("Comment deleted with id: " + id);
 		database.delete(DataBaseWrapper.TABLE_PATIENTS, DataBaseWrapper.PATIENT_ID
 				+ " = " + id, null);
 	}
 
-	public List<Patient> getAllPatients() {
-		List<Patient> patients = new ArrayList<Patient>();
+	public List<Patient_old> getAllPatients() {
+		List<Patient_old> patients = new ArrayList<Patient_old>();
 
 		Cursor cursor = database.query(DataBaseWrapper.TABLE_PATIENTS,
 				PATIENT_TABLE_COLUMNS, null, null, null, null, null);
 
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
-			Patient patient = parsePatient(cursor);
+			Patient_old patient = parsePatient(cursor);
 			patients.add(patient);
 			cursor.moveToNext();
 		}
@@ -103,15 +103,15 @@ public class PatientOperations {
 		return patients;
 	}
 
-	public List<Patient> searchPatients(String name) {
-		List<Patient> patients = new ArrayList<Patient>();
+	public List<Patient_old> searchPatients(String name) {
+		List<Patient_old> patients = new ArrayList<Patient_old>();
 
 		Cursor cursor = database.query(DataBaseWrapper.TABLE_PATIENTS,
 				PATIENT_TABLE_COLUMNS, DataBaseWrapper.PATIENT_NAME + "='" + name + "'", null, null, null, null);
 
 		cursor.moveToFirst();
 		while (!cursor.isAfterLast()) {
-			Patient patient = parsePatient(cursor);
+			Patient_old patient = parsePatient(cursor);
 			patients.add(patient);
 			cursor.moveToNext();
 		}
@@ -120,8 +120,8 @@ public class PatientOperations {
 		return patients;
 	}
 	
-	private static Patient parsePatient(Cursor cursor) {
-		Patient patient = new Patient();
+	private static Patient_old parsePatient(Cursor cursor) {
+		Patient_old patient = new Patient_old();
 		patient.setId((cursor.getInt(0)));
 		patient.setName(cursor.getString(1));
 		patient.setecg(cursor.getString(2));

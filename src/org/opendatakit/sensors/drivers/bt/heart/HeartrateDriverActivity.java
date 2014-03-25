@@ -597,7 +597,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	                condition = detectHeartCondition();
 	                
 	                // add new data into patient database
-					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					Patient_old pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
 					
 					// start View Activity
 					open_ViewActivity();

@@ -21,7 +21,7 @@ public class DatabaseActivity extends ListActivity {
 	
 	private static final String TAG = "DatabaseActivity";
 	public static PatientOperations patientDBoperation;
-	public static ArrayAdapter<Patient> adapter;
+	public static ArrayAdapter<Patient_old> adapter;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -33,7 +33,7 @@ public class DatabaseActivity extends ListActivity {
 		patientDBoperation.open();
 
 		Log.d(TAG, "GET ALL APTIENTS");
-		List<Patient> values = patientDBoperation.getAllPatients();
+		List<Patient_old> values = patientDBoperation.getAllPatients();
 		
 		if (values != null) {
 			Log.d(TAG, "size of list: " + values.size());
@@ -42,7 +42,7 @@ public class DatabaseActivity extends ListActivity {
 		
 		// Use the SimpleCursorAdapter to show the
 		// elements in a ListView
-		adapter = new ArrayAdapter<Patient>(this,
+		adapter = new ArrayAdapter<Patient_old>(this,
 				android.R.layout.simple_list_item_1, values);
 		listview.setAdapter(adapter);
 
@@ -50,9 +50,9 @@ public class DatabaseActivity extends ListActivity {
 
 	public void addUser(View view) {
 		
-		ArrayAdapter<Patient> adapter = (ArrayAdapter<Patient>) getListAdapter();
+		ArrayAdapter<Patient_old> adapter = (ArrayAdapter<Patient_old>) getListAdapter();
 		EditText text = (EditText) findViewById(R.id.editText1);
-		Patient pat = patientDBoperation.addPatient(text.getText().toString());
+		Patient_old pat = patientDBoperation.addPatient(text.getText().toString());
 		
 		adapter.add(pat);
 
@@ -61,10 +61,10 @@ public class DatabaseActivity extends ListActivity {
 	public void deleteFirstUser(View view) {
 
 		ArrayAdapter adapter = (ArrayAdapter) getListAdapter();
-		Patient pat = null;
+		Patient_old pat = null;
 
 		if (getListAdapter().getCount() > 0) {
-			pat = (Patient) getListAdapter().getItem(0);
+			pat = (Patient_old) getListAdapter().getItem(0);
 			patientDBoperation.deletePatient(pat);
 			adapter.remove(pat);
 		}
@@ -73,9 +73,9 @@ public class DatabaseActivity extends ListActivity {
 	public void searchUser(View view) {
 		
 		EditText text = (EditText) findViewById(R.id.editText1);
-		List<Patient> values = patientDBoperation.searchPatients(text.getText().toString());
+		List<Patient_old> values = patientDBoperation.searchPatients(text.getText().toString());
 		
-		adapter = new ArrayAdapter<Patient>(this,
+		adapter = new ArrayAdapter<Patient_old>(this,
 				android.R.layout.simple_list_item_1, values);
 		listview.setAdapter(adapter);
 	}
@@ -88,7 +88,7 @@ public class DatabaseActivity extends ListActivity {
 		listview.setAdapter(adapter);
 		listview.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				Patient pat = (Patient) parent.getAdapter().getItem(position);
+				Patient_old pat = (Patient_old) parent.getAdapter().getItem(position);
 				Log.d(TAG, "CLICKED PATIENT: " + pat.getName());
 				
 				Log.d(TAG, "CLICKED PATIENT: " + pat.getecg().length);
