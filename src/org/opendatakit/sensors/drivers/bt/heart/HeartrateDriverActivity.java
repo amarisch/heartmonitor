@@ -85,7 +85,6 @@ public class HeartrateDriverActivity extends BaseActivity {
 
 	private static final String HR_SENSOR_ID_STR = "EKG_SENSOR_ID";	
 	private static final int SENSOR_CONNECTION_COUNTER = 10;
-	private static final int DETECTION_TIME = 7500;
 	private static final int REQUEST_ENABLE_BT = 2;
 	
 	//each physical sensor has a unique sensorID. Activities use this sensorID to communicate with sensors via the framework.
@@ -105,18 +104,25 @@ public class HeartrateDriverActivity extends BaseActivity {
     
 /////////////////////////// Heartrate Detection Variables & Constants ///////////////////////////////
     
+	private static final int VOLTAGE_SAMPLE_SIZE = 50; // size of voltage array sent from HeartrateDriverImpl.java
+	private static final int DETECTION_TIME = 7500; 
+	private static final int NO_HEARTBEAT_DETECTED = -200;
+	private static final int HEARTBEAT_DETECTED = 200;
 	private static final String[] HEART_CONDITION_OPTIONS = {
         "Normal", "Bradycardia", "Tachycardia", "Abnormal QRS Complex", "Premature Atrial Contraction"};
     
-	private static int heartRate;
-	private static int qrs_duration;
+	private static int heartRate = 0;
+	private static int qrs_duration = 0;
+	private int qrs_duration_width_count = 0;
 	private static int condition;
     // voltage array from HeartrateDRiverImpl
-	private static int[] voltageValues;
-	// peak detection array from HeartrateDRiverImpl
-	private volatile int[] qrsValues;
-	// voltage array displayed and stored in the database
-	private static int[] voltageArray = new int[DETECTION_TIME];
+	private static int[] voltageValuesArray;
+	// peak detection value and array
+	private static int heartBeatValue = NO_HEARTBEAT_DETECTED;
+	private static int[] heartBeatArray = new int[DETECTION_TIME];
+	// ecg value and array displayed and stored in the database
+	private static int ecgValue = 0;
+	private static int[] ecgWaveformArray = new int[DETECTION_TIME];
     private static int index = 0;
 	// Heartrate array
 	private static int[] hrArray = new int[200];
@@ -124,6 +130,116 @@ public class HeartrateDriverActivity extends BaseActivity {
 	// qrs duration array
 	private static int[] qrsArray = new int[200];
 	private static int qrsIndex = 0;
+	
+	private static int seqNo = 0;
+	
+	// For filtering and analysis
+	private Lowpass bp =  new Lowpass();
+	private Integral inte = new Integral();
+	private Differential dif = new Differential();
+	private Differential dif2 = new Differential();
+	private DetectHeartrate dt = new DetectHeartrate();
+
+	
+	/*
+	  Lowpass filter with sampling frequency: 250 Hz
+
+	* 0 Hz - 4 Hz
+	  gain = 1
+	  desired ripple = 5 dB
+	  actual ripple = 1.7239660392741425 dB
+
+	* 20 Hz - 125 Hz
+	  gain = 0
+	  desired attenuation = -80 dB
+	  actual attenuation = -87.54790793759072 dB
+	*/
+	public static final int SAMPLEFILTER_TAP_NUM = 51;
+	public class Lowpass {
+		public int[] history = new int[SAMPLEFILTER_TAP_NUM];
+		public int last_index;
+		public int[] filter_taps = new int[]{
+				  0,
+				  0,
+				  0,
+				  0,
+				  0,
+				  0,
+				  0,
+				  1,
+				  1,
+				  2,
+				  4,
+				  6,
+				  9,
+				  13,
+				  17,
+				  22,
+				  28,
+				  34,
+				  40,
+				  46,
+				  52,
+				  58,
+				  62,
+				  66,
+				  68,
+				  68,
+				  68,
+				  66,
+				  62,
+				  58,
+				  52,
+				  46,
+				  40,
+				  34,
+				  28,
+				  22,
+				  17,
+				  13,
+				  9,
+				  6,
+				  4,
+				  2,
+				  1,
+				  1,
+				  0,
+				  0,
+				  0,
+				  0,
+				  0,
+				  0,
+				  0
+		};
+	}
+	
+	
+	
+	// currently not used
+	private static final int AVE_NUM = 7; //# of samples used for average filter
+	public class Average {
+		public int[] x = new int[AVE_NUM - 1];
+	}
+	
+	
+	public class Integral {
+		public int[] x = new int[32];
+		public int ptr = 0;
+		public long sum = 0;
+	}
+	
+	
+	public class Differential {
+		public int[] x_derv = new int[4];
+	}
+
+	
+	public class DetectHeartrate {
+		  public int threshold = 0, stage = 0, peak = 0;
+		  public int t = 0;
+		  public int[] hr = new int[5];
+	}
+	
 	
 
 ///////////////////////// ECG Plot Constants and Variables /////////////////////////////////
@@ -400,9 +516,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 	 */
 	private void returnSensorDataToCaller() {
 		Intent intent = new Intent();
-		intent.putExtra(HeartrateDriverImpl.QRS_DURATION, qrs_duration);
-		intent.putExtra(HeartrateDriverImpl.HEART_RATE, heartRate);
-		intent.putExtra(HeartrateDriverImpl.VOLTAGE_VALUES, voltageValues);
+		intent.putExtra(HeartrateDriverImpl.SEQ_NUM, seqNo);
+		intent.putExtra(HeartrateDriverImpl.VOLTAGE_VALUES, voltageValuesArray);
 		setResult(RESULT_OK, intent);
 		
 		finish();
@@ -482,7 +597,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 	                condition = detectHeartCondition();
 	                
 	                // add new data into patient database
-					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), voltageArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					Patient pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
 					
 					// start View Activity
 					open_ViewActivity();
@@ -502,6 +617,253 @@ public class HeartrateDriverActivity extends BaseActivity {
 //                  Functions that analyze different Heart-related components                    //
 /////////////////////////////////////////////////////////////////////////////////////////////////// 	
 
+	private void process_raw_voltage_values() {
+		
+		for (int i = 0; i < voltageValuesArray.length; i++) {
+		    
+			/*
+			 * After a length of DETECTION_TIME, a dialog will pop up to save the trace
+			 * Done sampling
+			 */
+        	if (index >= DETECTION_TIME) {
+                Log.d(TAG, "qrsindex: " + qrsIndex);
+                Log.d(TAG, "hrindex: " + hrIndex);
+                sensorDataProcessor.cancel(true);
+        		// show dialog for the option of saving the trace to the database
+        		showdialog();
+                return;
+        	}
+        	
+        	if (index % DOMAIN_MAX == 0) {
+        		voltageSeries.clear();
+        		qrsLines.clear();
+        	}
+
+    		int processed_voltage_value = apply_algorithms_for_heartrate_detection(voltageValuesArray[i]);
+
+    		
+    		heartBeatValue = detect_heartrate(processed_voltage_value);
+    		
+    		
+    		qrs_duration_detection(processed_voltage_value);
+    		if (qrs_duration != 0) {
+    			qrsArray[qrsIndex++] = qrs_duration;
+    		}
+    		qrs_duration = 0;
+    		
+    		
+    		/* Apply filters for display */
+    		ecgValue = apply_filters_for_display(voltageValuesArray[i] - 512);
+        	
+        	voltageSeries.add(index % DOMAIN_MAX, ecgValue);
+        	qrsLines.add((index % DOMAIN_MAX) - 5, heartBeatValue); // minus 5 for allignment purposes
+        	
+        	if (index < DETECTION_TIME) {
+        		ecgWaveformArray[index] = ecgValue;
+        		heartBeatArray[index] = heartBeatValue;
+        	}
+        	index++;
+        	
+        	waveform.repaint();
+        	
+	        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
+        	
+			//update heartrate field on the display
+			Log.d(TAG, "heartrate: " + heartRate + ", qrs_duration: " + qrs_duration);
+			//Log.d(TAG, "beatcount: " + beatCount);
+			if (heartRate == 0) {
+				heartRateField.setText(String.valueOf("Detecting Heartrate"));
+			} else {
+				heartRateField.setText(String.valueOf(heartRate));
+			}
+			//timeField.setText(String.valueOf(beatCount));
+        }
+	}
+	
+	private void qrs_duration_detection(int qrs) {
+		int slope = differentiation_algorithm(qrs, dif2);
+		if (slope > 0) {
+			qrs_duration_width_count++;
+		} else {
+			
+			/* 
+			 * Store qrs duration data into qrs_duration array
+			 * at least 40ms qrs duration, anything below is probably noise or from T wave
+			 */
+			if (qrs_duration_width_count > 10) {
+				// duration (in ms) is equal to qrswidth_count * 4ms
+				qrs_duration = qrs_duration_width_count * 4;
+				//Log.d(TAG,"qrs width: " + qrswidth_count);
+			}
+			qrs_duration_width_count = 0;
+		}
+	}
+	
+	// for calculating heartrate
+	private int apply_algorithms_for_heartrate_detection(int voltage) {
+		int value = differentiation_algorithm(voltage, dif);
+		value = value * value; // square function
+		value = integration_algorithm(value);
+		//Log.d(TAG, "QRS: " + qrs);
+		return value;
+		
+	}
+	
+	// filters used for display
+	private int apply_filters_for_display(int voltage) {
+		voltage = lowpass_filter(voltage);
+		return voltage;
+	}
+	
+	private int lowpass_filter(int raw) {
+		  bp.history[bp.last_index++] = raw;
+		  if(bp.last_index == SAMPLEFILTER_TAP_NUM)
+			  bp.last_index = 0;
+		  
+		  long acc = 0;
+		  int index = bp.last_index, i;
+		  for(i = 0; i < SAMPLEFILTER_TAP_NUM; ++i) {
+		    index = index != 0 ? index-1 : SAMPLEFILTER_TAP_NUM-1;
+		    acc += (long)bp.history[index] * bp.filter_taps[i];
+		  }
+		  return (int) (acc >> 10);
+	}
+	
+	private int differentiation_algorithm(int raw, Differential dif) {
+		int y, i;
+		
+		y = (raw << 1) + dif.x_derv[3] - dif.x_derv[1] - (dif.x_derv[0] << 1);
+		y >>= 3;
+		
+		for (i = 0; i < 3; ++i)
+			dif.x_derv[i] = dif.x_derv[i+1];
+		dif.x_derv[3] = raw;
+		
+		return y;
+	}
+
+	private int integration_algorithm(int raw) {
+		long ly;
+		int y;
+		
+		if (++inte.ptr == 32)
+			inte.ptr = 0;
+		
+		inte.sum -= inte.x[inte.ptr];
+		inte.sum += raw;
+		inte.x[inte.ptr] = raw;
+		ly = inte.sum >> 5;
+		if (ly > 32400)
+			y = 32400;
+		else
+			y = (int) ly;
+		
+		return y;
+	}
+
+/*
+	private int apply_avg(int raw) {
+		
+		int x0 = raw;
+		
+		for (int i = 0; i < AVE_NUM - 1; i++) {
+			x0 += av.x[i];
+		}
+		x0 = x0 / AVE_NUM;
+		
+		for (int i = AVE_NUM - 2; i > 0; i--)
+			av.x[i] = av.x[i-1];
+		av.x[0] = raw;
+
+		return x0;
+	}
+*/	
+	
+	
+	/*
+	 * If need to get system time, use
+	 * long time = System.currentTimeMillis();
+	 */
+	
+	private int prev_heartrate = 0;
+	private double prev_rr_interval = 0;
+	private int rr_irregularity = 0;
+
+	// calculate heartrate and returns whether a heartbeat is detected
+	private int detect_heartrate(int data) {
+		// wait until the fingers have been on the metal plate for awhile before heartrate detection
+		if (seqNo < 8) {
+			return NO_HEARTBEAT_DETECTED;
+		}
+		
+		dt.t++;
+	  
+		// if we go pass 4sec without reasonable heartrate detection, reset the values
+		if (dt.t > 1000) {
+			dt.stage = 0;
+			dt.threshold = 0;
+			dt.t = 0;
+		}
+	  
+		if (dt.stage == 0 && dt.t > 20) {
+			
+			if (data > dt.threshold) {
+				//printf("in ");
+				dt.stage = 1;
+				dt.peak = data;
+			}
+			
+		} else if (dt.stage == 1) {
+			
+			if (data > dt.peak) {
+				dt.peak = data;	
+			} else if (data < 0.50*dt.peak) {
+				dt.stage = 0;
+				dt.threshold = (int) ((0.125 * (dt.peak * 0.50)) + 0.875 * dt.threshold);
+
+			
+				// time in sec between adjacent R waves
+				double rr_interval =  dt.t * 0.004;
+				
+				/*
+				 * check regularity of RR Interval
+				 * Considered irregular if the difference between 2 RR intervals is greater than 120ms
+				 */
+				if (prev_rr_interval != 0 && Math.abs(rr_interval - prev_rr_interval) > 0.12) {
+					rr_irregularity++;
+				}
+				prev_rr_interval = rr_interval;
+				
+				// multiple d_t by 60 seconds to find bpm
+				double h = 60 / rr_interval;
+				Log.d(TAG,"RR Interval: " + rr_interval + ", d_t in sec: " + (double) rr_interval/1000 + ", h: " + h);
+	      
+	      
+				// only take the heartrate value if it's in a reasonable range: less than 300bpm
+				if (h < 300) {
+					
+					prev_heartrate = heartRate;
+					
+					// heartrate adjustment to prevent drastic changes
+					if (prev_heartrate != 0)
+						h = (int) ((h)*0.50 + 0.50*prev_heartrate);
+   	  
+					if (seqNo >= 20) {
+						heartRate = (int) h;
+						if (heartRate != 0)
+							hrArray[hrIndex++] = heartRate;
+					}
+				}
+	      
+				Log.d(TAG, "out. t = " + dt.t + ", thresh = " + dt.threshold + ", peak = " + dt.peak + ", hr = " + heartRate);
+	      
+				dt.t = 0;
+				return HEARTBEAT_DETECTED;
+			}
+		}
+		return NO_HEARTBEAT_DETECTED;
+	}
+	
 	private int computeAverageHR() {
 		int sum = 0;
 		for (int i = 0; i < hrIndex; i++) {
@@ -577,125 +939,17 @@ public class HeartrateDriverActivity extends BaseActivity {
 						
 						//retrieve sensor data from each bundle and store it locally. 
 						
-						heartRate = aBundle.getInt(HeartrateDriverImpl.HEART_RATE);
-						qrs_duration = aBundle.getInt(HeartrateDriverImpl.QRS_DURATION);
-						
-						if (heartRate != 0)
-							hrArray[hrIndex++] = heartRate;
-						
-						if (qrs_duration != 0) {
-							qrsArray[qrsIndex++] = qrs_duration;
-						}
-						
-						
-						voltageValues = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
-						qrsValues = aBundle.getIntArray(HeartrateDriverImpl.QRS_VALUES);
-						
-						
-/*
- * Voltage values being wrapped around and old values are removed
- * 
- */							
-						Log.d(TAG, "VOLTAGE LENGTH: " + voltageValues.length);
-						for (int i = 0; i < voltageValues.length; i++) {
-						    
-							/*
-							 * After a length of DETECTION_TIME, a dialog will pop up to save the trace
-							 * Done sampling
-							 */
-				        	if (index >= DETECTION_TIME) {
-				                Log.d(TAG, "qrsindex: " + qrsIndex);
-				                Log.d(TAG, "hrindex: " + hrIndex);
-				                sensorDataProcessor.cancel(true);
-				        		// show dialog for the option of saving the trace to the database
-				        		showdialog();
-				 
-				                return;
-				        	}
-				        	
-				        	if (index % DOMAIN_MAX == 0) {
-				        		voltageSeries.clear();
-				        		qrsLines.clear();
-				        	}
+						// Unfiltered heart voltage values
+						voltageValuesArray = aBundle.getIntArray(HeartrateDriverImpl.VOLTAGE_VALUES);
+						seqNo = aBundle.getInt(HeartrateDriverImpl.SEQ_NUM);
 
-				        	qrsLines.add(index % DOMAIN_MAX, qrsValues[i]);
-				        	
-				        	// write to the end of the screen, start from the beginning
-				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
-				        	
-				        	if (index < DETECTION_TIME) {
-				        		voltageArray[index] = voltageValues[i];
-				        	}
-				        	index++;
-				        	
-				        	waveform.repaint();
-				        	
-					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
-
-				        }
+						Log.d(TAG, "VOLTAGE LENGTH: " + voltageValuesArray.length);
 						
+						/*
+						 * IMPORTANT FUNCTION: filters voltage values for display; processes voltage values for various detections
+						 */
+						process_raw_voltage_values();
 						
-/*
- * Voltage values being wrapped around and old values being kept
- * 
- */						
-/*				        for (int i = 0; i < voltageValues.length; i++) {
-					    
-				        	if (index / (DOMAIN_MAX - 40) >= 1) {
-				        		voltageSeries.remove(0);
-				        	}
-				        	// write to the end of the screen, start from the beginning
-				        	voltageSeries.add(index % DOMAIN_MAX, voltageValues[i]);
-				        	index++;
-				        	
-				        	
-			                //renderer.setXAxisMax(renderer.getXAxisMax() + 30);
-			                //renderer.setXAxisMin(renderer.getXAxisMin() + 30);
-
-			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
-				        	waveform.repaint();
-				        	
-					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);
-
-
-				        
-				        }
-*/				        
-						
-						
-/*
- * Display moves with voltage values
- * 
- */
-/*						Log.d(TAG, "length: " + voltageValues.length);
-						
-				        for (int i = 0; i < voltageValues.length; i++) {
-						    
-				        	if (index >= DOMAIN_MAX - 40) {
-				                renderer.setXAxisMin(renderer.getXAxisMin() + 1);
-				                renderer.setXAxisMax(renderer.getXAxisMax() + 1);
-				        	}
-				        	
-				        	voltageSeries.add(index, voltageValues[i]);
-				        	index++;
-
-
-			                //waveform.repaint(index - 1, 50, (index -1) % 750, -50);
-				        	waveform.repaint();
-				        	
-					        //Log.d(TAG, "heartVOl: " + voltageValues[i]);			        
-				        }
-*/
-						
-						//update UI
-						Log.d(TAG, "heartrate: " + heartRate + ", qrs_duration: " + qrs_duration);
-						//Log.d(TAG, "beatcount: " + beatCount);
-						if (heartRate == 0) {
-							heartRateField.setText(String.valueOf("Detecting Heartrate"));
-						} else {
-							heartRateField.setText(String.valueOf(heartRate));
-						}
-						//timeField.setText(String.valueOf(beatCount));
 					}
 				}
 			}
@@ -871,7 +1125,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         qrs_duration = computeAverage_qrs_duration();
         condition = detectHeartCondition();
         Intent i = new Intent(this,ViewActivity.class);
-        i.putExtra("xyseries", voltageArray);
+        i.putExtra("xyseries", ecgWaveformArray);
         i.putExtra("heartrate", heartRate);
         i.putExtra("qrs_duration", qrs_duration);
         i.putExtra("regularity", HEART_CONDITION_OPTIONS[condition]);
