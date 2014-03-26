@@ -77,7 +77,7 @@ import android.widget.Toast;
  * 6) stopSensor(...): ODKSensors stops collecting data from the sensor after this method call.
  *  
  */
-public class HeartrateDriverActivity extends BaseActivity {
+public class HeartrateDriverActivity_old extends BaseActivity {
  
 	private static final String TAG = "SensorDriverActivity";
 	
@@ -1113,7 +1113,7 @@ public class HeartrateDriverActivity extends BaseActivity {
      * Opens DatabaseActivity
      */
     private void open_DatabaseActivity() {
-    	Intent j = new Intent(this,DatabaseActivity_old.class);
+    	Intent j = new Intent(this,DatabaseActivity.class);
         startActivity(j);
     }
     

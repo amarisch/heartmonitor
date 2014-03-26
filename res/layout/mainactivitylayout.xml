@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+	<Button
+	    android:id="@+id/viewPatients"
+	    android:layout_width="250dip"
+	    android:layout_height="50dip"
+	    android:layout_alignLeft="@+id/addNewPatient"
+	    android:layout_alignParentTop="true"
+	    android:layout_marginTop="34dp"
+	    android:onClick="viewPatients"
+	    android:text="View Patients"
+	    android:textSize="21sp" />
+
+	<Button
+	    android:id="@+id/runSensor_recorded"
+	    android:layout_width="250dip"
+	    android:layout_height="50dip"
+	    android:layout_below="@+id/runSensor"
+	    android:layout_centerHorizontal="true"
+	    android:layout_marginTop="20dp"
+	    android:onClick="runSensor_recorded"
+	    android:text="Run Sensor (Recorded)"
+	    android:textSize="21sp" />
+
+	<Button
+	    android:id="@+id/runSensor"
+	    android:layout_width="250dip"
+	    android:layout_height="50dip"
+	    android:layout_alignLeft="@+id/runSensor_recorded"
+	    android:layout_below="@+id/addNewPatient"
+	    android:layout_marginTop="22dp"
+	    android:onClick="runSensor"
+	    android:text="Run Sensor"
+	    android:textSize="21sp" />
+
+	<Button
+	    android:id="@+id/addNewPatient"
+	    android:layout_width="250dip"
+	    android:layout_height="50dip"
+	    android:layout_alignLeft="@+id/runSensor"
+	    android:layout_below="@+id/viewPatients"
+	    android:layout_marginTop="19dp"
+	    android:onClick="addNewPatient"
+	    android:text="Add New Patient"
+	    android:textSize="21sp" />
+
+	<Button
+	    android:id="@+id/settings"
+	    android:layout_width="250dip"
+	    android:layout_height="50dip"
+	    android:layout_alignLeft="@+id/runSensor"
+	    android:layout_below="@+id/runSensor_recorded"
+	    android:layout_marginTop="19dp"
+	    android:onClick="settings"
+	    android:text="Settings"
+	    android:textSize="21sp" />
+				
+</RelativeLayout>

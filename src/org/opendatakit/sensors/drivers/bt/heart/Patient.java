@@ -1,12 +1,22 @@
 package org.opendatakit.sensors.drivers.bt.heart;
 
-public class Patient {
+import java.io.Serializable;
+
+public class Patient implements Serializable {
 
 	private int id;
 	private String name;
-	private int gender; // 0=male; 1=female
+	private String gender;
 	private String birthdate;
 
+	public Patient() {
+	}
+	
+	public Patient(String name) {
+		this.name = name;
+	}	
+	
+	
 	public void setId(int id) {
 		this.id = id;
 	}
@@ -15,7 +25,7 @@ public class Patient {
 		this.name = name;
 	}
 	
-	public void setGender(int gender) {
+	public void setGender(String gender) {
 		this.gender = gender;
 	}
 
@@ -31,7 +41,7 @@ public class Patient {
 		return this.name;
 	}
 	
-	public int getGender() {
+	public String getGender() {
 		return this.gender;
 	}
 	

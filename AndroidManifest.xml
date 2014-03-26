@@ -17,6 +17,10 @@
         </activity>        
         
         <activity
+            android:name=".MainActivity" >
+        </activity>        
+        
+        <activity
             android:name=".SetPreferenceActivity" >
         </activity>
         
@@ -27,7 +31,14 @@
         <activity
             android:name=".DatabaseActivity" >
         </activity>        
-        
+
+		<activity
+            android:name=".FormActivity" >
+        </activity>   
+       
+		<activity
+            android:name=".PatientProfileActivity" >
+        </activity>		
         
         <!-- The meta-data elements required by ODKSensors -->
         

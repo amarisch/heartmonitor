@@ -10,6 +10,16 @@ public class ECG_Data {
 	private int p_wave;
 
 	public ECG_Data() { }
+
+	public ECG_Data(String date, String ecg_waveform, int heartrate,
+			int qrs_duration, int regularity, int p_wave) {
+		this.date = date;
+		this.ecg_waveform = ecg_waveform;
+		this.heartrate = heartrate;
+		this.qrs_duration = qrs_duration;
+		this.regularity = regularity;
+		this.p_wave = p_wave;
+	}
 	
 	public ECG_Data(int id, String date, String ecg_waveform, int heartrate,
 			int qrs_duration, int regularity, int p_wave) {

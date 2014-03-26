@@ -6,6 +6,7 @@ import java.util.List;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
@@ -32,6 +33,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_NAME = "name";
     private static final String KEY_GENDER = "gender";
     private static final String KEY_BIRTHDATE = "birthdate";
+    private static String[] TABLE_PATIENT_COLUMNS = { KEY_NAME, KEY_GENDER, KEY_BIRTHDATE };
  
     // ECG Data Table - column names
     private static final String KEY_DATE = "date";
@@ -66,6 +68,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             + TABLE_PATIENT_ECG_DATA + "(" + KEY_ID + " INTEGER PRIMARY KEY,"
             + KEY_PATIENT_ID + " INTEGER," + KEY_ECG_DATA_ID + " INTEGER" + ")";
     
+    
+    private SQLiteDatabase db;
+    
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
@@ -78,6 +83,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE_PATIENT_ECG_DATA);
 	}
 
+	public void open() throws SQLException {
+		db = this.getWritableDatabase();
+	}
+	
+	public void close() {
+		db.close();
+	}
+	
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // on upgrade drop older tables
@@ -93,8 +106,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 * Creating a patient
 	 */
 	public long createPatient(Patient pat) {
-	    SQLiteDatabase db = this.getWritableDatabase();
-	 
+
 	    ContentValues values = new ContentValues();
 	    values.put(KEY_NAME, pat.getName());
 	    values.put(KEY_GENDER, pat.getGender());
@@ -110,8 +122,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 * add an ECG data entry to a patient
 	 */
 	public long addecgData(Patient pat, ECG_Data data) {
-	    SQLiteDatabase db = this.getWritableDatabase();
-	 
+
 	    ContentValues values = new ContentValues();
 	    values.put(KEY_DATE, data.getDate());
 	    values.put(KEY_ECG_WAVEFORM, data.getEcg_waveform());
@@ -132,14 +143,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * Creating patient_ecg_data
      */
     public long createPatientECGData(long patient_id, long ecg_data_id) {
-        SQLiteDatabase db = this.getWritableDatabase();
- 
+
         ContentValues values = new ContentValues();
         values.put(KEY_PATIENT_ID, patient_id);
         values.put(KEY_ECG_DATA_ID, ecg_data_id);
  
         long id = db.insert(TABLE_PATIENT_ECG_DATA, null, values);
- 
+
         return id;
     }
 	
@@ -147,8 +157,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 * get an ecg waveform
 	 */
 	public ECG_Data getEcgData(long ecg_data_id) {
-	    SQLiteDatabase db = this.getReadableDatabase();
-	 
+
 	    String selectQuery = "SELECT  * FROM " + TABLE_ECG_DATA + " WHERE "
 	            + KEY_ID + " = " + ecg_data_id;
 	 
@@ -158,8 +167,94 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 
 	    if (c != null)
 	        c.moveToFirst();
-	 
-	    ECG_Data data = new ECG_Data();
+	    
+	    ECG_Data data = parseEcgdata(c);
+	    c.close();
+	    return data;
+	}
+	
+    /*
+     * getting all ECG_datas for one patient. Returns a list of ECG_Data
+     */
+    public List<ECG_Data> getAllECG_data(Patient pat) {
+        List<ECG_Data> data = new ArrayList<ECG_Data>();
+        
+		Cursor cursor = db.query(TABLE_PATIENT_ECG_DATA, TABLE_PATIENT_ECG_DATA_COLUMNS,
+				KEY_PATIENT_ID + "='" + pat.getId() + "'", null, null, null, null);
+
+		cursor.moveToFirst();
+		while (!cursor.isAfterLast()) {
+			long ecg_data_id = cursor.getInt(cursor.getColumnIndex(KEY_ECG_DATA_ID));
+			ECG_Data single = getEcgData(ecg_data_id);
+			data.add(single);
+			cursor.moveToNext();
+		}
+		
+		cursor.close();
+		return data;
+    }
+    
+    /*
+     * Search for a patient given his/her name
+     */
+	public List<Patient> searchPatients(String name) {
+		List<Patient> patients = new ArrayList<Patient>();
+		
+		Cursor cursor = db.query(DataBaseWrapper.TABLE_PATIENTS,
+				TABLE_PATIENT_COLUMNS, KEY_NAME + "='" + name + "'", null, null, null, null);
+		
+		cursor.moveToFirst();
+		while (!cursor.isAfterLast()) {
+			Patient patient = parsePatient(cursor);
+			patients.add(patient);
+			cursor.moveToNext();
+		}
+
+		cursor.close();
+		return patients;
+	}
+    
+    /*
+     * getting all the patients
+     */
+	public List<Patient> getAllPatients() {
+		List<Patient> patients = new ArrayList<Patient>();
+		String selectQuery = "SELECT  * FROM " + TABLE_PATIENT;
+		
+		Log.e(LOG, selectQuery);
+		
+		Cursor c = db.rawQuery(selectQuery, null);
+        
+        // looping through all rows and adding to list
+        if (c.moveToFirst()) {
+            do {
+            	Patient pat = parsePatient(c);
+                // adding to patients list
+                patients.add(pat);
+            } while (c.moveToNext());
+        }
+        
+		c.close();
+		return patients;
+	}
+    
+	/*
+	 * Parse patient data from database. Return patient object
+	 */
+	private static Patient parsePatient(Cursor cursor) {
+		Patient patient = new Patient();
+		patient.setId((cursor.getInt(cursor.getColumnIndex(KEY_ID))));
+		patient.setName(cursor.getString(cursor.getColumnIndex(KEY_NAME)));
+		patient.setGender(cursor.getInt(cursor.getColumnIndex(KEY_GENDER)));
+		patient.setBirthdate(cursor.getString(cursor.getColumnIndex(KEY_BIRTHDATE)));
+		return patient;
+	}
+	
+	/*
+	 * Parse ecg data from database. Return ECG_Data object
+	 */
+	private static ECG_Data parseEcgdata(Cursor c) {
+		ECG_Data data = new ECG_Data();
 	    data.setId(c.getInt(c.getColumnIndex(KEY_ID)));
 	    data.setDate((c.getString(c.getColumnIndex(KEY_DATE))));
 	    data.setEcg_waveform(c.getString(c.getColumnIndex(KEY_ECG_WAVEFORM)));
@@ -167,37 +262,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	    data.setQrs_duration(c.getInt(c.getColumnIndex(KEY_QRS_DURATION)));
 	    data.setRegularity(c.getInt(c.getColumnIndex(KEY_REGULARITY)));
 	    data.setP_wave(c.getInt(c.getColumnIndex(KEY_P_WAVE)));
-	    
-	    return data;
+		return data;
 	}
 	
-    /*
-     * getting all ECG_datas for one patient
-     */
-    public List<ECG_Data> getAllECG_data(Patient pat) {
-        List<ECG_Data> data = new ArrayList<ECG_Data>();
-        
-        SQLiteDatabase db = this.getReadableDatabase();
-		Cursor cursor = db.query(TABLE_PATIENT_ECG_DATA, TABLE_PATIENT_ECG_DATA_COLUMNS,
-				KEY_PATIENT_ID + "='" + pat.getId() + "'", null, null, null, null);
-
-		cursor.moveToFirst();
-		while (!cursor.isAfterLast()) {
-			long ecg_data_id = cursor.getInt(2);
-			ECG_Data single = getEcgData(ecg_data_id);
-			data.add(single);
-			cursor.moveToNext();
-		}
-		
-		return data;
-    }
-    
     /**
      * Deleting a patient and all his/her ecg data
      */
     public void deletePatient(Patient pat) {
-        SQLiteDatabase db = this.getWritableDatabase();
- 
+
         // get all ECG data under this patient
         List<ECG_Data> alldata = getAllECG_data(pat);
  
@@ -218,7 +290,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * Deleting an ECG_Data
      */
     public void deleteEcgData(long ecg_data_id) {
-        SQLiteDatabase db = this.getWritableDatabase();
+
         db.delete(TABLE_ECG_DATA, KEY_ID + " = ?",
                 new String[] { String.valueOf(ecg_data_id) });
     }

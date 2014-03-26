@@ -150,7 +150,7 @@ public class ViewActivity extends Activity{
         switch (item.getItemId()) {
 
         case R.id.patientList:
-            Intent j = new Intent(this,DatabaseActivity.class);
+            Intent j = new Intent(this,DatabaseActivity_old.class);
             startActivity(j);
             return true;            
         case R.id.preferences:

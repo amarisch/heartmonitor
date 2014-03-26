@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+	<TextView
+	    android:id="@+id/nameLabel"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:text="Patient Name: "            
+	    android:textSize="24sp"
+	    android:textStyle="bold" >
+	</TextView>
+	
+	<TextView
+	    android:id="@+id/nameField"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_below="@+id/nameLabel"
+	    android:layout_weight="1" 
+	    android:textSize="21sp" >
+	</TextView>
+	
+	<TextView
+        android:id="@+id/genderLabel"
+        android:layout_width="125dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/nameField"
+        android:text="Gender: "
+        android:textSize="24sp"
+        android:textStyle="bold" >
+	</TextView>
+	
+	<TextView
+        android:id="@+id/genderField"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/dobLabel"
+        android:layout_alignRight="@+id/nameLabel"
+        android:layout_weight="1"
+        android:textSize="21sp" />
+	
+	<TextView
+	    android:id="@+id/dobLabel"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_below="@+id/genderLabel"
+	    android:text="Date of Birth: "            
+	    android:textSize="24sp"
+	    android:textStyle="bold" >
+	</TextView>
+
+    <TextView
+        android:id="@+id/dobField"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/dobLabel"
+        android:layout_toRightOf="@+id/dobLabel"
+        android:layout_weight="1"
+        android:textSize="21sp" />
+    
+    <ListView
+        android:id="@android:id/list"
+        android:layout_width="match_parent"
+        android:layout_height="300dip"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/dobLabel"
+        android:layout_marginTop="23dp" >
+
+    </ListView>
+
+    <TextView
+        android:id="@+id/ecgLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/dobLabel"
+        android:text="ECG Data History"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/edit"
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:onClick="edit"
+        android:text="Edit" />
+
+</RelativeLayout>
