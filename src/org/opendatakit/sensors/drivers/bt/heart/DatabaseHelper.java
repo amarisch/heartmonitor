@@ -13,7 +13,7 @@ import android.util.Log;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 	   // Logcat tag
-    private static final String LOG = "DatabaseHelper";
+    private static final String TAG = "DatabaseHelper";
  
     // Database Version
     private static final int DATABASE_VERSION = 1;
@@ -33,7 +33,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_NAME = "name";
     private static final String KEY_GENDER = "gender";
     private static final String KEY_BIRTHDATE = "birthdate";
-    private static String[] TABLE_PATIENT_COLUMNS = { KEY_NAME, KEY_GENDER, KEY_BIRTHDATE };
+    private static String[] TABLE_PATIENT_COLUMNS = { KEY_ID, KEY_NAME, KEY_GENDER, KEY_BIRTHDATE };
  
     // ECG Data Table - column names
     private static final String KEY_DATE = "date";
@@ -119,6 +119,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	}
 	
 	/*
+	 * Update a patient
+	 */
+	public void updatePatient(Patient pat) {
+
+	    ContentValues values = new ContentValues();
+	    values.put(KEY_NAME, pat.getName());
+	    values.put(KEY_GENDER, pat.getGender());
+	    values.put(KEY_BIRTHDATE, pat.getBirthdate());
+
+	    db.update(TABLE_PATIENT, values, "id=" + pat.getId(), null);
+	}
+	
+	
+	/*
 	 * add an ECG data entry to a patient
 	 */
 	public long addecgData(Patient pat, ECG_Data data) {
@@ -161,7 +175,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	    String selectQuery = "SELECT  * FROM " + TABLE_ECG_DATA + " WHERE "
 	            + KEY_ID + " = " + ecg_data_id;
 	 
-	    Log.e(LOG, selectQuery);
+	    Log.e(TAG, selectQuery);
 	 
 	    Cursor c = db.rawQuery(selectQuery, null);
 	 
@@ -203,11 +217,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		Cursor cursor = db.query(DataBaseWrapper.TABLE_PATIENTS,
 				TABLE_PATIENT_COLUMNS, KEY_NAME + "='" + name + "'", null, null, null, null);
 		
-		cursor.moveToFirst();
-		while (!cursor.isAfterLast()) {
-			Patient patient = parsePatient(cursor);
-			patients.add(patient);
-			cursor.moveToNext();
+		if (cursor.moveToFirst()) {
+			while (!cursor.isAfterLast()) {
+				Patient patient = parsePatient(cursor);
+				patients.add(patient);
+				cursor.moveToNext();
+			}
 		}
 
 		cursor.close();
@@ -221,7 +236,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		List<Patient> patients = new ArrayList<Patient>();
 		String selectQuery = "SELECT  * FROM " + TABLE_PATIENT;
 		
-		Log.e(LOG, selectQuery);
+		Log.e(TAG, selectQuery);
 		
 		Cursor c = db.rawQuery(selectQuery, null);
         
@@ -243,9 +258,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 */
 	private static Patient parsePatient(Cursor cursor) {
 		Patient patient = new Patient();
-		patient.setId((cursor.getInt(cursor.getColumnIndex(KEY_ID))));
+		patient.setId((cursor.getLong(cursor.getColumnIndex(KEY_ID))));
 		patient.setName(cursor.getString(cursor.getColumnIndex(KEY_NAME)));
-		patient.setGender(cursor.getInt(cursor.getColumnIndex(KEY_GENDER)));
+		patient.setGender(cursor.getString(cursor.getColumnIndex(KEY_GENDER)));
 		patient.setBirthdate(cursor.getString(cursor.getColumnIndex(KEY_BIRTHDATE)));
 		return patient;
 	}
@@ -255,7 +270,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	 */
 	private static ECG_Data parseEcgdata(Cursor c) {
 		ECG_Data data = new ECG_Data();
-	    data.setId(c.getInt(c.getColumnIndex(KEY_ID)));
+	    data.setId(c.getLong(c.getColumnIndex(KEY_ID)));
 	    data.setDate((c.getString(c.getColumnIndex(KEY_DATE))));
 	    data.setEcg_waveform(c.getString(c.getColumnIndex(KEY_ECG_WAVEFORM)));
 	    data.setHeartrate(c.getInt(c.getColumnIndex(KEY_HEARTRATE)));
@@ -270,15 +285,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     public void deletePatient(Patient pat) {
 
+    	Log.d(TAG, "delete patient: " + pat.getName());
+    	
         // get all ECG data under this patient
         List<ECG_Data> alldata = getAllECG_data(pat);
  
-            // delete all todos
-        for (ECG_Data data : alldata) {
-            // delete todo
-        	deleteEcgData(data.getId());
+    	Log.d(TAG, "patient data#: " + alldata.size());
+        
+        if (alldata.size() != 0) {
+	        // delete all todos
+	        for (ECG_Data data : alldata) {
+	            // delete todo
+	        	deleteEcgData(data.getId());
+	        }
         }
- 
+        
         // now delete the patient in TABLE_PATIENT and TABLE_PATIENT_ECG_DATA
         db.delete(TABLE_PATIENT_ECG_DATA, KEY_PATIENT_ID + " = ?",
                 new String[] { String.valueOf(pat.getId()) });

@@ -19,7 +19,10 @@ package org.opendatakit.sensors.drivers.bt.heart;
 
 import java.sql.Date;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -113,6 +116,8 @@ public class HeartrateDriverActivity extends BaseActivity {
     
 	private static int heartRate = 0;
 	private static int qrs_duration = 0;
+	private static int regularity = 0;
+	private static int p_wave = 0;
 	private int qrs_duration_width_count = 0;
 	private static int condition;
     // voltage array from HeartrateDRiverImpl
@@ -264,7 +269,8 @@ public class HeartrateDriverActivity extends BaseActivity {
     
 ///////////////////////// Database Variable ///////////////////////////////////////////////////////
 	
-    public static PatientOperations patientDBoperation;
+    public static DatabaseHelper dbhelper;
+    private Patient pat;
     
     
     
@@ -302,13 +308,12 @@ public class HeartrateDriverActivity extends BaseActivity {
 		
 		// Initialize Plot setting
 		plot_init();
+		
+		// Initialize DatabaseHelper
+		dbhelper = new DatabaseHelper(this);
 
 		// Restore previous sensorID
 		restore_sensorID();
-		
-		// Initialize and open patient database
-		patientDBoperation = new PatientOperations(this);
-		patientDBoperation.open();
 
 	}
 
@@ -399,6 +404,9 @@ public class HeartrateDriverActivity extends BaseActivity {
 	protected void onResume() {
 		super.onResume();
 		
+		dbhelper.open();
+		pat = (Patient) getIntent().getParcelableExtra("patient");
+		
     	readPrefs();
     	updatePrefs();
     	
@@ -416,16 +424,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 		}			
 	}
 	
-	public void onBackPressed() {
-/*		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
-		alertDialog = alertDialogBuilder.create();
-		alertDialog.dismiss();
-		sensorDataProcessor = new DataProcessor();
-		sensorDataProcessor.execute();
-*/
-	}
-	
     protected void onPause() {
+        dbhelper.close();
         super.onPause();
     }
 	
@@ -498,13 +498,15 @@ public class HeartrateDriverActivity extends BaseActivity {
 	@Override
 	public void onDestroy() {
 		
-		try {
-			//call stopSensor to stop receiving data from the framework.
-			stopSensor(sensorID);
-			isStarted = false;
-		}
-		catch(RemoteException rex) {
-			rex.printStackTrace();
+		if (sensorID != null) {
+			try {
+				//call stopSensor to stop receiving data from the framework.
+				stopSensor(sensorID);
+				isStarted = false;
+			}
+			catch(RemoteException rex) {
+				rex.printStackTrace();
+			}
 		}
 		
 		//amongst other things, the super.onDestroy terminates the connection between the activity and the Sensors framrwork. 
@@ -590,14 +592,15 @@ public class HeartrateDriverActivity extends BaseActivity {
 					// if this button is clicked, the trace is saved to the database
 					// and the view activity will pop up
 					Dialog f = (Dialog) dialog;
-					EditText text = (EditText) f.findViewById(R.id.name);
 
 	                heartRate = computeAverageHR();
 	                qrs_duration = computeAverage_qrs_duration();
-	                condition = detectHeartCondition();
-	                
+	                regularity = evaluateRegularity();
+	                p_wave = evaluatePwave();
+
 	                // add new data into patient database
-					Patient_old pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					dbhelper.addecgData(pat, new ECG_Data(getDateTime(), 
+							Arrays.toString(ecgWaveformArray), heartRate, qrs_duration, regularity, p_wave));
 					
 					// start View Activity
 					open_ViewActivity();
@@ -888,7 +891,17 @@ public class HeartrateDriverActivity extends BaseActivity {
 			return 0;
 
 	}
+
 	
+	private int evaluateRegularity() {
+		return 0;
+	}
+	
+	private int evaluatePwave() {
+		return 0;
+	}
+	
+	/*
 	private int detectHeartCondition() {
 		if (heartRate < 60) {
 			// Bradycardia condition
@@ -902,7 +915,7 @@ public class HeartrateDriverActivity extends BaseActivity {
 			return 0;
 		}
 	}
-	
+	*/
 	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //                           DataProcessing and Connection Functions                             //
@@ -1113,7 +1126,7 @@ public class HeartrateDriverActivity extends BaseActivity {
      * Opens DatabaseActivity
      */
     private void open_DatabaseActivity() {
-    	Intent j = new Intent(this,DatabaseActivity_old.class);
+    	Intent j = new Intent(this,DatabaseActivity.class);
         startActivity(j);
     }
     
@@ -1121,14 +1134,12 @@ public class HeartrateDriverActivity extends BaseActivity {
      * Opens ViewActivity
      */
     private void open_ViewActivity() {
-        heartRate = computeAverageHR();
-        qrs_duration = computeAverage_qrs_duration();
-        condition = detectHeartCondition();
         Intent i = new Intent(this,ViewActivity.class);
         i.putExtra("xyseries", ecgWaveformArray);
         i.putExtra("heartrate", heartRate);
         i.putExtra("qrs_duration", qrs_duration);
-        i.putExtra("regularity", HEART_CONDITION_OPTIONS[condition]);
+        i.putExtra("regularity", regularity);
+        i.putExtra("p_wave", p_wave);
         startActivity(i);
     }
     
@@ -1182,5 +1193,15 @@ public class HeartrateDriverActivity extends BaseActivity {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                               //
 /////////////////////////////////////////////////////////////////////////////////////////////////// 
+	
+    /**
+     * get datetime
+     * */
+    private String getDateTime() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        Date date = new Date(System.currentTimeMillis());
+        return dateFormat.format(date);
+    }
 	
 }

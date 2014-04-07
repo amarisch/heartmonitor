@@ -13,25 +13,15 @@
 	    android:textStyle="bold" >
 	</TextView>
 	
-	<TextView
+	<EditText
 	    android:id="@+id/nameField"
 	    android:layout_width="wrap_content"
 	    android:layout_height="wrap_content"
 	    android:layout_below="@+id/nameLabel"
 	    android:layout_weight="1" 
+	    android:hint="Enter your First and Last name"
 	    android:textSize="21sp" >
-	</TextView>
-	
-	<TextView
-        android:id="@+id/genderLabel"
-        android:layout_width="125dp"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/nameField"
-        android:text="Gender: "
-        android:textSize="24sp"
-        android:textStyle="bold" >
-	</TextView>
+	</EditText>
 	
 	<TextView
         android:id="@+id/genderField"
@@ -41,43 +31,65 @@
         android:layout_alignRight="@+id/nameLabel"
         android:layout_weight="1"
         android:textSize="21sp" />
-	
-	<TextView
-	    android:id="@+id/dobLabel"
-	    android:layout_width="wrap_content"
-	    android:layout_height="wrap_content"
-	    android:layout_below="@+id/genderLabel"
-	    android:text="Date of Birth: "            
-	    android:textSize="24sp"
-	    android:textStyle="bold" >
-	</TextView>
 
     <TextView
-        android:id="@+id/dobField"
+        android:id="@+id/dobLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/dobLabel"
-        android:layout_toRightOf="@+id/dobLabel"
-        android:layout_weight="1"
-        android:textSize="21sp" />
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/nameField"
+        android:text="Date of Birth: "
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/ecgLabel"
+    <EditText
+        android:id="@+id/dob"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/dobLabel"
-        android:text="ECG Data History"
+        android:ems="10"
+		android:hint="mm/dd/yyyy"
+        android:inputType="date" >
+    </EditText>
+
+    <TextView
+        android:id="@+id/genderLabel"
+        android:layout_width="125dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/dob"
+        android:text="Gender: "
         android:textSize="24sp"
         android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/button1"
+	<RadioGroup
+        android:id="@+id/radioGender"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/dobField"
-        android:layout_below="@+id/ecgLabel"
-        android:layout_marginTop="114dp"
-        android:text="Button" />
+        android:layout_below="@+id/genderLabel" >
+	    
+		<RadioButton
+	        android:id="@+id/female"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="female" />
+
+	    <RadioButton
+	        android:id="@+id/male"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="male" />
+	</RadioGroup>
+
+    <Button
+        android:id="@+id/save"
+        android:layout_width="200dip"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/radioGender"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:onClick="save"
+        android:text="Save" />
 
 </RelativeLayout>

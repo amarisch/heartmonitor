@@ -48,10 +48,9 @@ public class MainActivity extends Activity {
 	    // Get the layout inflater
 	    LayoutInflater inflater = this.getLayoutInflater();
 	    
-		// set title
-		alertDialogBuilder.setTitle("You must create a patient profile in order to proceed." +
-				" Would you like to create a profile?");
-
+		alertDialogBuilder.setMessage("You must create a patient profile in order to proceed."
+				 + " Would you like to create a profile?");
+		
 		// set dialog message
 		alertDialogBuilder
 			.setView(inflater.inflate(R.layout.dialoglayout, null))
@@ -75,5 +74,9 @@ public class MainActivity extends Activity {
 		 
 			// show it
 			alertDialog.show();
+	}
+	
+	public void onDestroy() {
+		super.onDestroy();
 	}
 }

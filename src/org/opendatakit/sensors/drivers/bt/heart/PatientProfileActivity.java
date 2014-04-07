@@ -21,7 +21,10 @@ public class PatientProfileActivity extends ListActivity {
 	private static final String TAG = "PatientProfileActivity";
 	private Patient pat;
 	private static ListView listview;
-
+	private static TextView nameField;
+	private static TextView genderField;
+	private static TextView dobField;
+	
 	public static DatabaseHelper dbhelper;
 	public static ArrayAdapter<ECG_Data> adapter;
 	
@@ -30,14 +33,25 @@ public class PatientProfileActivity extends ListActivity {
 		// automatically set orientation to landscape
         setContentView(R.layout.patientprofileactivitylayout);
 		listview = (ListView)findViewById(android.R.id.list);
-		TextView nameField = (TextView)findViewById(R.id.nameField);
-		TextView genderField = (TextView)findViewById(R.id.genderField);
-		TextView dobField = (TextView)findViewById(R.id.dobField);
+		nameField = (TextView)findViewById(R.id.nameField);
+		genderField = (TextView)findViewById(R.id.genderField);
+		dobField = (TextView)findViewById(R.id.dobField);
 		
 		dbhelper = new DatabaseHelper(this);
-
-        pat = (Patient) getIntent().getSerializableExtra("patient");
+ 	}
+ 	
+	@Override
+	protected void onResume() {
+		super.onResume();
+		dbhelper.open();
+		
+        pat = (Patient) getIntent().getParcelableExtra("patient");
         
+        if (pat == null) {
+        	Log.d(TAG, "Error in getting Patient object");
+        }
+        
+		Log.d(TAG, "Got Patient object");
         nameField.setText(pat.getName());
         genderField.setText(pat.getGender());
         dobField.setText(pat.getBirthdate());
@@ -47,20 +61,16 @@ public class PatientProfileActivity extends ListActivity {
 		
 		if (data != null) {
 			Log.d(TAG, "size of list: " + data.size());
+			displayHistory(data);
 		}
 		Log.d(TAG, "DONE GETTING ALL");
-		
+	}
+
+	public void displayHistory(List<ECG_Data> data) {
 		// Use the SimpleCursorAdapter to show the
 		// elements in a ListView
 		adapter = new ArrayAdapter<ECG_Data>(this,
 				android.R.layout.simple_list_item_1, data);
-		listview.setAdapter(adapter);
- 	}
- 	
-	@Override
-	protected void onResume() {
-		super.onResume();
-		dbhelper.open();
 		
 		listview.setAdapter(adapter);
 		listview.setOnItemClickListener(new OnItemClickListener() {
@@ -77,7 +87,7 @@ public class PatientProfileActivity extends ListActivity {
 			}
 		});
 	}
-
+	
 	@Override
 	protected void onPause() {
 		dbhelper.close();
@@ -85,11 +95,20 @@ public class PatientProfileActivity extends ListActivity {
 	}
  	
 	public void edit(View view) {
-		
-    	Intent j = new Intent(this,FormActivity.class);
+    	Intent j = new Intent(this, FormActivity.class);
     	j.putExtra("patient", pat);
         startActivity(j);
-
+	}
+	
+	public void addData(View view) {
+    	Intent j = new Intent(this, HeartrateDriverActivity.class);
+    	j.putExtra("patient", pat);
+        startActivity(j);
+	}
+	
+	public void onBackPressed() {
+    	Intent j = new Intent(this, DatabaseActivity.class);
+        startActivity(j);
 	}
 	
 }

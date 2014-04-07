@@ -1,69 +1,59 @@
 package org.opendatakit.sensors.drivers.bt.heart;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class FormActivity extends Activity {
 
 	private static final String TAG = "FormActivity";
 	private Patient pat;
 
+	private RadioGroup radioGenderGroup;
+	private RadioButton radioGenderButton;
+	private Button save;
+	private EditText dob;
+	private EditText nameField;
+	
 	public static DatabaseHelper dbhelper;
 	
  	protected void onCreate(Bundle savedInstanceState) {
 	 	super.onCreate(savedInstanceState);
-		// automatically set orientation to landscape
-        setContentView(R.layout.formactivitylayout);
 
-		TextView nameField = (TextView)findViewById(R.id.nameField);
-		TextView genderField = (TextView)findViewById(R.id.genderField);
-		TextView dobField = (TextView)findViewById(R.id.dobField);
+        setContentView(R.layout.formactivitylayout);
 		
+        radioGenderGroup = (RadioGroup) findViewById(R.id.radioGender);
+		nameField = (EditText) findViewById(R.id.nameField);
+		dob = (EditText) findViewById(R.id.dob);
+		save = (Button) findViewById(R.id.save);
+        
 		dbhelper = new DatabaseHelper(this);
 
-        pat = (Patient) getIntent().getSerializableExtra("patient");
-        
-        if (pat != null) {
-            nameField.setText(pat.getName());
-            genderField.setText(pat.getGender());
-            dobField.setText(pat.getBirthdate());	
-        }
-		
 		Log.d(TAG, "GET ALL ecg data");
-		List<ECG_Data> data = dbhelper.getAllECG_data(pat);
-		
-		if (data != null) {
-			Log.d(TAG, "size of list: " + data.size());
-		}
-		Log.d(TAG, "DONE GETTING ALL");
-		
-		// Use the SimpleCursorAdapter to show the
-		// elements in a ListView
-		adapter = new ArrayAdapter<ECG_Data>(this,
-				android.R.layout.simple_list_item_1, data);
-		listview.setAdapter(adapter);
  	}
  	
 	@Override
 	protected void onResume() {
 		super.onResume();
 		dbhelper.open();
-		
-		listview.setAdapter(adapter);
-		listview.setOnItemClickListener(new OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				ECG_Data dat = (ECG_Data) parent.getAdapter().getItem(position);
-				Log.d(TAG, "CLICKED DATA: " + dat.getDate());
-				
-                Intent in = new Intent(PatientProfileActivity.this,ViewActivity.class);
-                in.putExtra("xyseries", dat.waveform_to_array());
-                in.putExtra("heartrate", dat.getHeartrate());
-                in.putExtra("qrs_duration", dat.getQrs_duration());                
-                in.putExtra("regularity", dat.getRegularity());  
-                startActivity(in);
+		pat = (Patient) getIntent().getParcelableExtra("patient");
+		if (pat != null) {
+			nameField.setText(pat.getName());
+			dob.setText(pat.getBirthdate());
+			if (pat.getGender().equals("female")) {
+				Log.d(TAG, "female");
 			}
-		});
+		}
 	}
 
 	@Override
@@ -71,10 +61,43 @@ public class FormActivity extends Activity {
 		dbhelper.close();
 		super.onPause();
 	}
- = (ArrayAdapter<Patient_old>) getListAdapter();
-	EditText text = (EditText) findViewById(R.id.editText1);
- = dbhelper.createPatient(new Patient(text.getText().toString()));
-
-	adapter.add(pat);
 	
+	public void save(View view) {
+		int selectedId = radioGenderGroup.getCheckedRadioButtonId();
+		if (nameField.getText().length() == 0 || dob.getText().length() == 0 
+				|| selectedId == -1) {
+			
+			Toast.makeText(getApplicationContext(), "Please complete the form", Toast.LENGTH_LONG).show();
+		
+		} else {
+			// get selected radio button from radioGroup
+			// find the radiobutton by returned id
+			radioGenderButton = (RadioButton) findViewById(selectedId);
+			
+			if(pat == null) {
+				pat = new Patient();
+				
+				pat.setName((String) nameField.getText().toString());
+				pat.setBirthdate((String) dob.getText().toString());
+				pat.setGender((String) radioGenderButton.getText().toString());
+				
+				dbhelper.createPatient(pat);	
+			} else {
+				pat.setName((String) nameField.getText().toString());
+				pat.setBirthdate((String) dob.getText().toString());
+				pat.setGender((String) radioGenderButton.getText().toString());
+
+				// update patient info in the database
+				dbhelper.updatePatient(pat);
+			}
+			
+			gotoPatientProfileActivity();
+		}
+	}
+	
+	private void gotoPatientProfileActivity() {
+    	Intent j = new Intent(this,PatientProfileActivity.class);
+    	j.putExtra("patient", pat);
+        startActivity(j);
+	}
 }

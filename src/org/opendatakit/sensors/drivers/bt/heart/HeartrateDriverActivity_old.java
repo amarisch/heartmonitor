@@ -590,14 +590,14 @@ public class HeartrateDriverActivity_old extends BaseActivity {
 					// if this button is clicked, the trace is saved to the database
 					// and the view activity will pop up
 					Dialog f = (Dialog) dialog;
-					EditText text = (EditText) f.findViewById(R.id.name);
+					//EditText text = (EditText) f.findViewById(R.id.name);
 
 	                heartRate = computeAverageHR();
 	                qrs_duration = computeAverage_qrs_duration();
 	                condition = detectHeartCondition();
 	                
 	                // add new data into patient database
-					Patient_old pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
+					//Patient_old pat = patientDBoperation.addPatient_complete(text.getText().toString(), ecgWaveformArray, heartRate, HEART_CONDITION_OPTIONS[condition]);
 					
 					// start View Activity
 					open_ViewActivity();

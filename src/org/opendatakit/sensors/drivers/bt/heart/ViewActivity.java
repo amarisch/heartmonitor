@@ -75,7 +75,7 @@ public class ViewActivity extends Activity{
 		qrs_durationField.setText("  " + String.valueOf(qrs_duration));
 
 		if (regularity == null) {
-			regularityField.setText("  " + "detecting");
+			regularityField.setText("  " + "Nothing Detected");
 		} else {
 			regularityField.setText("  " + String.valueOf(regularity));
 		}

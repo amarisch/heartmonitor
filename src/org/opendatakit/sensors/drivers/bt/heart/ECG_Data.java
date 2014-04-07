@@ -1,7 +1,7 @@
 package org.opendatakit.sensors.drivers.bt.heart;
 
 public class ECG_Data {
-	private int id;
+	private long id;
 	private String date;
 	private String ecg_waveform;
 	private int heartrate;
@@ -21,7 +21,7 @@ public class ECG_Data {
 		this.p_wave = p_wave;
 	}
 	
-	public ECG_Data(int id, String date, String ecg_waveform, int heartrate,
+	public ECG_Data(long id, String date, String ecg_waveform, int heartrate,
 			int qrs_duration, int regularity, int p_wave) {
 		this.id = id;
 		this.date = date;
@@ -32,7 +32,7 @@ public class ECG_Data {
 		this.p_wave = p_wave;
 	}
 	
-	public void setId(int id) {
+	public void setId(long id) {
 		this.id = id;
 	}
 

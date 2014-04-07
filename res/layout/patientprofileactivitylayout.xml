@@ -85,11 +85,33 @@
     <Button
         android:id="@+id/edit"
         style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
+        android:layout_width="50dip"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true"
         android:onClick="edit"
         android:text="Edit" />
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/ecgLabel"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/ecgLabel"
+        android:layout_toRightOf="@+id/ecgLabel"
+        android:textSize="10sp"
+		android:onClick="addData"
+        android:text="Add ECG data" />
+
+    <Button
+        android:id="@+id/button2"
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="50dip"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/edit"
+        android:onClick="delete"
+        android:text="Delete" />
 
 </RelativeLayout>

@@ -30,7 +30,13 @@ public class DatabaseActivity extends ListActivity {
 		listview=(ListView)findViewById(android.R.id.list);
 
 		dbhelper = new DatabaseHelper(this);
+		dbhelper.open();
+	}
 
+	@Override
+	protected void onResume() {
+		super.onResume();
+		
 		Log.d(TAG, "GET ALL APTIENTS");
 		List<Patient> values = dbhelper.getAllPatients();
 		
@@ -43,10 +49,21 @@ public class DatabaseActivity extends ListActivity {
 		// elements in a ListView
 		adapter = new ArrayAdapter<Patient>(this,
 				android.R.layout.simple_list_item_1, values);
+
 		listview.setAdapter(adapter);
-
+		Log.d(TAG, "set adapter");
+		
+		listview.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				Patient pat = (Patient) parent.getAdapter().getItem(position);
+				Log.d(TAG, "get patient:" + pat.getName());
+				Intent in = new Intent(DatabaseActivity.this,PatientProfileActivity.class);
+				in.putExtra("patient", pat);
+				startActivity(in);
+			}
+		});
 	}
-
+	
 	public void addUser(View view) {
 		
     	Intent j = new Intent(this,FormActivity.class);
@@ -55,13 +72,22 @@ public class DatabaseActivity extends ListActivity {
 
 	public void deleteFirstUser(View view) {
 
-		ArrayAdapter adapter = (ArrayAdapter) getListAdapter();
+		ArrayAdapter<Patient> adapter = (ArrayAdapter<Patient>) getListAdapter();
 		Patient pat = null;
 
+		if (getListAdapter() == null) {
+			Log.d(TAG, "adapter null");
+		} else {
+		
 		if (getListAdapter().getCount() > 0) {
 			pat = (Patient) getListAdapter().getItem(0);
-			dbhelper.deletePatient(pat);
+			if (pat == null) {
+				Log.d(TAG, "patient null");
+			}
+
+			//dbhelper.deletePatient(pat);
 			adapter.remove(pat);
+		}
 		}
 	}
 	
@@ -70,24 +96,11 @@ public class DatabaseActivity extends ListActivity {
 		EditText text = (EditText) findViewById(R.id.editText1);
 		List<Patient> values = dbhelper.searchPatients(text.getText().toString());
 		
+		Log.d(TAG, "search result: " + values.size());
+		
 		adapter = new ArrayAdapter<Patient>(this,
 				android.R.layout.simple_list_item_1, values);
 		listview.setAdapter(adapter);
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-		dbhelper.open();
-		
-		listview.setAdapter(adapter);
-		listview.setOnItemClickListener(new OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				Patient pat = (Patient) parent.getAdapter().getItem(position);
-				Intent in = new Intent(DatabaseActivity.this,PatientProfileActivity.class);
-				in.putExtra("patient", pat);
-			}
-		});
 	}
 
 	@Override
