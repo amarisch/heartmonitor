@@ -14,25 +14,9 @@
         <requestFocus />
     </EditText>
 
-    <Button
-        android:id="@+id/addBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/editText1"
-        android:onClick="addUser"
-        android:text="Add New" />
-
-    <Button
-        android:id="@+id/deleteBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toRightOf="@+id/addBtn"
-        android:layout_below="@+id/editText1"
-        android:onClick="deleteFirstUser"
-        android:text="Delete First" />
 	<Button
         android:id="@+id/searchBtn"
-        android:layout_width="wrap_content"
+        android:layout_width="75dp"
         android:layout_height="wrap_content"
         android:layout_toRightOf="@+id/editText1"
         android:onClick="searchUser"
@@ -43,7 +27,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:layout_below="@+id/deleteBtn" >
+        android:layout_below="@+id/addBtn" >
     </ListView>
+
+    <Button
+        android:id="@+id/addBtn"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/searchBtn"
+        android:layout_alignParentTop="true"
+        android:onClick="addUser"
+        android:text="Add New" />
 
 </RelativeLayout>

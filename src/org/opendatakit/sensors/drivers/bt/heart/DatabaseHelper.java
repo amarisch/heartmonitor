@@ -14,7 +14,7 @@ import android.util.Log;
 public class DatabaseHelper extends SQLiteOpenHelper {
 	   // Logcat tag
     private static final String TAG = "DatabaseHelper";
- 
+    
     // Database Version
     private static final int DATABASE_VERSION = 1;
  

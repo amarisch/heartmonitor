@@ -32,45 +32,46 @@ public final class R {
     }
     public static final class id {
         public static final int activityStatusField=0x7f090019;
-        public static final int addBtn=0x7f090001;
-        public static final int addNewPatient=0x7f09000f;
-        public static final int button1=0x7f090016;
-        public static final int connect=0x7f090024;
+        public static final int addBtn=0x7f090002;
+        public static final int addNewPatient=0x7f09000e;
+        public static final int button1=0x7f090015;
+        public static final int button2=0x7f090016;
+        public static final int connect=0x7f090025;
         public static final int default_view=0x7f090023;
-        public static final int deleteBtn=0x7f090002;
-        public static final int dob=0x7f090008;
-        public static final int dobField=0x7f090013;
-        public static final int dobLabel=0x7f090007;
-        public static final int ecgLabel=0x7f090014;
+        public static final int dob=0x7f090007;
+        public static final int dobField=0x7f090012;
+        public static final int dobLabel=0x7f090006;
+        public static final int ecgLabel=0x7f090013;
         public static final int ecgplot=0x7f09001a;
-        public static final int edit=0x7f090015;
+        public static final int edit=0x7f090014;
         public static final int editText1=0x7f090000;
-        public static final int female=0x7f09000b;
-        public static final int genderField=0x7f090006;
-        public static final int genderLabel=0x7f090009;
+        public static final int export=0x7f090024;
+        public static final int female=0x7f09000a;
+        public static final int genderField=0x7f090005;
+        public static final int genderLabel=0x7f090008;
         public static final int heartRateField=0x7f090018;
         public static final int heartRateLabel=0x7f090017;
         public static final int heartrateLabel=0x7f09001c;
         public static final int large_view=0x7f090021;
-        public static final int male=0x7f09000c;
-        public static final int nameField=0x7f090005;
-        public static final int nameLabel=0x7f090004;
-        public static final int patientList=0x7f090028;
-        public static final int preferences=0x7f090026;
+        public static final int male=0x7f09000b;
+        public static final int nameField=0x7f090004;
+        public static final int nameLabel=0x7f090003;
+        public static final int patientList=0x7f090029;
+        public static final int preferences=0x7f090027;
         public static final int qrs_durationField=0x7f09001e;
         public static final int qrs_durationLabel=0x7f09001d;
-        public static final int radioGender=0x7f09000a;
+        public static final int radioGender=0x7f090009;
         public static final int regularityField=0x7f090020;
         public static final int regularityLabel=0x7f09001f;
-        public static final int runSensor=0x7f090011;
-        public static final int runSensor_recorded=0x7f090010;
-        public static final int save=0x7f09000d;
-        public static final int searchBtn=0x7f090003;
-        public static final int settings=0x7f090012;
+        public static final int runSensor=0x7f090010;
+        public static final int runSensor_recorded=0x7f09000f;
+        public static final int save=0x7f09000c;
+        public static final int searchBtn=0x7f090001;
+        public static final int settings=0x7f090011;
         public static final int small_view=0x7f090022;
-        public static final int start=0x7f090025;
-        public static final int view=0x7f090027;
-        public static final int viewPatients=0x7f09000e;
+        public static final int start=0x7f090026;
+        public static final int view=0x7f090028;
+        public static final int viewPatients=0x7f09000d;
         public static final int voltage=0x7f09001b;
     }
     public static final class layout {
@@ -84,8 +85,9 @@ public final class R {
     }
     public static final class menu {
         public static final int actions=0x7f080000;
-        public static final int options_menu=0x7f080001;
-        public static final int viewactivity_options_menu=0x7f080002;
+        public static final int db_view_options_menu=0x7f080001;
+        public static final int options_menu=0x7f080002;
+        public static final int viewactivity_options_menu=0x7f080003;
     }
     public static final class string {
         public static final int app_name=0x7f070001;

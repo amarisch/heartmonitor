@@ -31,7 +31,7 @@ public class ViewActivity extends Activity{
 	
 	private int heartRate;
 	private int qrs_duration;
-	private String regularity;
+	private int regularity; // change later use to display std. dev for now
 	
 	// For AChartEngine main plot
 	private static int[] voltageArray;
@@ -58,7 +58,7 @@ public class ViewActivity extends Activity{
         voltageArray = getIntent().getIntArrayExtra("xyseries");
         heartRate = getIntent().getIntExtra("heartrate", 0);
         qrs_duration = getIntent().getIntExtra("qrs_duration", 0);
-        regularity = getIntent().getStringExtra("regularity");
+        regularity = getIntent().getIntExtra("regularity", 0);
         		
         Log.d(TAG,"item count: " + voltageArray.length);
         
@@ -74,11 +74,14 @@ public class ViewActivity extends Activity{
 		heartRateField.setText("  " + String.valueOf(heartRate));
 		qrs_durationField.setText("  " + String.valueOf(qrs_duration));
 
-		if (regularity == null) {
+		regularityField.setText("  " + String.valueOf(regularity));
+
+/*		if (regularity == null) {
 			regularityField.setText("  " + "Nothing Detected");
 		} else {
 			regularityField.setText("  " + String.valueOf(regularity));
 		}
+*/
  	}
  	
  	
@@ -150,7 +153,7 @@ public class ViewActivity extends Activity{
         switch (item.getItemId()) {
 
         case R.id.patientList:
-            Intent j = new Intent(this,DatabaseActivity_old.class);
+            Intent j = new Intent(this,DatabaseActivity.class);
             startActivity(j);
             return true;            
         case R.id.preferences:

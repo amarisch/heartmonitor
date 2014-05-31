@@ -1,7 +1,11 @@
 package org.opendatakit.sensors.drivers.bt.heart;
 
+import java.util.List;
+
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -52,18 +56,23 @@ public class FormActivity extends Activity {
 			dob.setText(pat.getBirthdate());
 			if (pat.getGender().equals("female")) {
 				Log.d(TAG, "female");
+				radioGenderGroup.check(R.id.female);
+			} else { 
+				radioGenderGroup.check(R.id.male);
 			}
 		}
 	}
 
 	@Override
 	protected void onPause() {
+		Log.d(TAG, "ON PAUSE");
 		dbhelper.close();
 		super.onPause();
 	}
 	
 	public void save(View view) {
 		int selectedId = radioGenderGroup.getCheckedRadioButtonId();
+		Log.d(TAG, "botton id: " + selectedId);
 		if (nameField.getText().length() == 0 || dob.getText().length() == 0 
 				|| selectedId == -1) {
 			
@@ -75,13 +84,22 @@ public class FormActivity extends Activity {
 			radioGenderButton = (RadioButton) findViewById(selectedId);
 			
 			if(pat == null) {
-				pat = new Patient();
 				
-				pat.setName((String) nameField.getText().toString());
-				pat.setBirthdate((String) dob.getText().toString());
-				pat.setGender((String) radioGenderButton.getText().toString());
-				
-				dbhelper.createPatient(pat);	
+				String name = nameField.getText().toString();
+				List<Patient> others = dbhelper.searchPatients(name);
+				if (others.size() != 0) {
+					sameNameAlert();
+				} else {
+					pat = new Patient();
+					
+					pat.setName((String) nameField.getText().toString());
+					pat.setBirthdate((String) dob.getText().toString());
+					pat.setGender((String) radioGenderButton.getText().toString());
+					
+					dbhelper.createPatient(pat);
+					
+					gotoPatientProfileActivity();
+				}
 			} else {
 				pat.setName((String) nameField.getText().toString());
 				pat.setBirthdate((String) dob.getText().toString());
@@ -89,15 +107,47 @@ public class FormActivity extends Activity {
 
 				// update patient info in the database
 				dbhelper.updatePatient(pat);
+				
+				finish();
 			}
-			
-			gotoPatientProfileActivity();
 		}
 	}
 	
+	private void sameNameAlert() {
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+				this);
+ 
+			// set title
+			//alertDialogBuilder.setTitle("Your Title");
+ 
+			// set dialog message
+			alertDialogBuilder
+				.setMessage("Patient profile with this name already exist in the database. " +
+						"Would you like to search for it in Patient list?")
+				.setCancelable(false)
+				.setPositiveButton("Yes",new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,int id) {
+						finish();
+					}
+				  })
+				.setNegativeButton("No",new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,int id) {
+						// if this button is clicked, just close
+						// the dialog box and do nothing
+						dialog.cancel();
+					}
+				});
+ 
+				// create alert dialog
+				AlertDialog alertDialog = alertDialogBuilder.create();
+ 
+				// show it
+				alertDialog.show();
+	}
+	
 	private void gotoPatientProfileActivity() {
-    	Intent j = new Intent(this,PatientProfileActivity.class);
-    	j.putExtra("patient", pat);
-        startActivity(j);
+		Intent launchNext = new Intent(this, PatientProfileActivity.class);
+		launchNext.putExtra("patient", pat);
+		startActivity(launchNext);
 	}
 }

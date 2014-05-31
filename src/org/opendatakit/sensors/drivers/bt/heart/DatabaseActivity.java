@@ -1,19 +1,29 @@
 package org.opendatakit.sensors.drivers.bt.heart;
 
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.List;
 
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 public class DatabaseActivity extends ListActivity {
 
@@ -21,6 +31,7 @@ public class DatabaseActivity extends ListActivity {
 	
 	private static final String TAG = "DatabaseActivity";
 	public static DatabaseHelper dbhelper;
+    private static final String DATABASE_NAME = "PatientData";
 	public static ArrayAdapter<Patient> adapter;
 
 	@Override
@@ -30,12 +41,12 @@ public class DatabaseActivity extends ListActivity {
 		listview=(ListView)findViewById(android.R.id.list);
 
 		dbhelper = new DatabaseHelper(this);
-		dbhelper.open();
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
+		dbhelper.open();
 		
 		Log.d(TAG, "GET ALL APTIENTS");
 		List<Patient> values = dbhelper.getAllPatients();
@@ -70,7 +81,7 @@ public class DatabaseActivity extends ListActivity {
         startActivity(j);
 	}
 
-	public void deleteFirstUser(View view) {
+/*	public void deleteFirstUser(View view) {
 
 		ArrayAdapter<Patient> adapter = (ArrayAdapter<Patient>) getListAdapter();
 		Patient pat = null;
@@ -90,6 +101,7 @@ public class DatabaseActivity extends ListActivity {
 		}
 		}
 	}
+*/	
 	
 	public void searchUser(View view) {
 		
@@ -103,10 +115,64 @@ public class DatabaseActivity extends ListActivity {
 		listview.setAdapter(adapter);
 	}
 
+	private void exportDB(){
+		File sd = Environment.getExternalStorageDirectory();
+		Log.d(TAG, sd.getAbsolutePath());
+		File data = Environment.getDataDirectory();
+		Log.d(TAG, data.getAbsolutePath());
+		FileChannel source=null;
+		FileChannel destination=null;
+		String currentDBPath = "/data/"+ "org.opendatakit.sensors.drivers.bt.heart" +"/databases/" + DATABASE_NAME;
+		String backupDBPath = DATABASE_NAME;
+		File currentDB = new File(data, currentDBPath);
+		File backupDB = new File(sd, backupDBPath);
+		try {
+			source = new FileInputStream(currentDB).getChannel();
+			destination = new FileOutputStream(backupDB).getChannel();
+			destination.transferFrom(source, 0, source.size());
+			source.close();
+			destination.close();
+			Toast.makeText(this, "DB Exported!", Toast.LENGTH_LONG).show();
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+		
+		File dbFile = getDatabasePath(DATABASE_NAME);
+		Log.d(TAG, dbFile.getAbsolutePath());
+		
+	}
+	
+	
 	@Override
 	protected void onPause() {
+		Log.d(TAG, "ON PAUSE");
 		dbhelper.close();
 		super.onPause();
+	}
+	
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//							Functions related to the options menu                                //
+///////////////////////////////////////////////////////////////////////////////////////////////////  	
+
+	public boolean onCreateOptionsMenu(Menu menu) {
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.db_view_options_menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+			case R.id.export:
+			
+				exportDB();
+				
+				return true;
+
+			}        
+		
+		return false;
 	}
 	
 

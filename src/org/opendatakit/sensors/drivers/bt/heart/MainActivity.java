@@ -6,12 +6,15 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 
 
 public class MainActivity extends Activity {
+	
+	private static final String TAG = "MainActivity";
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -76,7 +79,18 @@ public class MainActivity extends Activity {
 			alertDialog.show();
 	}
 	
+	public void onPause() {
+		Log.d(TAG, "ON PAUSE MAIN");
+		super.onPause();
+	}
+	
+	public void onStop() {
+		Log.d(TAG, "ON STOP MAIN");
+		super.onStop();
+	}
+	
 	public void onDestroy() {
+		Log.d(TAG, "ON DESTROY MAIN");
 		super.onDestroy();
 	}
 }

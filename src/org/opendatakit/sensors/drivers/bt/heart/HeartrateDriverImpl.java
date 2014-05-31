@@ -184,6 +184,7 @@ public class HeartrateDriverImpl extends AbstractDriverBaseV2  {
 		int msgType = payloadBuffer[0] & 0xff;
 		int seqLow = payloadBuffer[1] & 0xff; // sequence number low byte
 		int seqHi = payloadBuffer[2] & 0xff; // sequence number high byte
+		Log.d(TAG, "seqlow: " + seqLow + "seqHi: " + seqHi);
 		seqNo = seqHi << 8 | seqLow; // 2 byte sequence number
 		int receivedCRC = payloadBuffer[PAYLOAD_SIZE - 1] & 0xff;
 		byte calcCRC = 0;

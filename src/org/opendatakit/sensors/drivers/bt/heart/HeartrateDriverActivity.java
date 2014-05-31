@@ -53,6 +53,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -293,6 +294,7 @@ public class HeartrateDriverActivity extends BaseActivity {
     
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		Log.d(TAG, "ON CREATE 1");
 		super.onCreate(savedInstanceState);
 		
 		// automatically set orientation to landscape
@@ -301,10 +303,12 @@ public class HeartrateDriverActivity extends BaseActivity {
 		plot = (LinearLayout) findViewById(R.id.ecgplot);
 		heartRateField = (TextView) findViewById(R.id.heartRateField);
 		activityStatusField = (TextView) findViewById(R.id.activityStatusField);
+		activityStatusField.setGravity(Gravity.RIGHT);
+		
+		Log.d(TAG, "ON CREATE 2");
 		
 		// Preferences setting
 		mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        readPrefs();
 		
 		// Initialize Plot setting
 		plot_init();
@@ -314,6 +318,8 @@ public class HeartrateDriverActivity extends BaseActivity {
 
 		// Restore previous sensorID
 		restore_sensorID();
+		
+		Log.d(TAG, "ON CREATE 3");
 
 	}
 
@@ -348,7 +354,7 @@ public class HeartrateDriverActivity extends BaseActivity {
         renderer.setYLabels(50);
         
         // x and y axis labels
-        renderer.setShowLabels(false);
+        renderer.setShowLabels(true);
 
         renderer.setYAxisMin(RANGE_MIN);
         renderer.setYAxisMax(RANGE_MAX);
@@ -402,6 +408,12 @@ public class HeartrateDriverActivity extends BaseActivity {
 	}
 	
 	protected void onResume() {
+		Log.d(TAG, "ON RESUME 1");
+		if(isStarted)
+			Log.d(TAG, "IS STARTED");
+		else 
+			Log.d(TAG, "NOT STARTED");
+		
 		super.onResume();
 		
 		dbhelper.open();
@@ -409,23 +421,54 @@ public class HeartrateDriverActivity extends BaseActivity {
 		
     	readPrefs();
     	updatePrefs();
-    	
+    	 	
+    	Log.d(TAG, "ON RESUME 2");
     	
     	activityStatusField.setText(String.valueOf("detecting, place both hands on the pads"));
     	
 		if(!isConnectedToSensor) {
+			Log.d(TAG, "not connected");
 			activityStatusField.setText(String.valueOf("not connected"));	
 		} else if (isStarted) { 
+			Log.d(TAG, "started");
 			sensorDataProcessor = new DataProcessor();
 			sensorDataProcessor.execute();
 			activityStatusField.setText(String.valueOf("detecting, place both hands on the pads"));
 		} else {
+			Log.d(TAG, "connected");
 			activityStatusField.setText(String.valueOf("connected:" + sensorID));	
 		}			
+		
+		Log.d(TAG, "ON RESUME 1");
+		
 	}
 	
     protected void onPause() {
+    	Log.d(TAG, "ON PAUSE HRDRIVER");
         dbhelper.close();
+        if (sensorDataProcessor != null) {
+	        AsyncTask.Status st = sensorDataProcessor.getStatus();
+	        if (st == AsyncTask.Status.FINISHED ) {
+	        	Log.d(TAG, "processor finished");
+	        } else if (st == AsyncTask.Status.PENDING ) {
+	        	Log.d(TAG, "processor pending");
+	        } else if (st == AsyncTask.Status.RUNNING ) {
+	        	Log.d(TAG, "processor running");
+	        }
+        } else {
+        	Log.d(TAG, "processor null");
+        }
+        //sensorDataProcessor.cancel(true);
+
+/*        try {
+        	
+			stopSensor(sensorID);
+			isStarted = false;
+			
+        } catch(RemoteException rex) {
+				rex.printStackTrace();
+		}
+ */       
         super.onPause();
     }
 	
@@ -494,19 +537,34 @@ public class HeartrateDriverActivity extends BaseActivity {
 		
 	}
 
+	public void onStop() {
+		Log.d(TAG, "ON STOP HRDRIVER");
+		super.onStop();
+	}
+	
 	
 	@Override
 	public void onDestroy() {
+		Log.d(TAG, "ON DESTROY HRDRIVER");
 		
-		if (sensorID != null) {
+		if (sensorID != null && isStarted == true) {
+			Log.d(TAG, "onDestroy: sensorID NOT NULL");
+			
 			try {
 				//call stopSensor to stop receiving data from the framework.
 				stopSensor(sensorID);
 				isStarted = false;
+				
 			}
 			catch(RemoteException rex) {
 				rex.printStackTrace();
 			}
+			sensorID = null;
+			Log.d(TAG, "SensorID set to NULL");
+			
+
+		} else {
+			Log.d(TAG, "onDestroy: sensorID NULL");
 		}
 		
 		//amongst other things, the super.onDestroy terminates the connection between the activity and the Sensors framrwork. 
@@ -894,7 +952,15 @@ public class HeartrateDriverActivity extends BaseActivity {
 
 	
 	private int evaluateRegularity() {
-		return 0;
+		int sq_sum = 0;
+		for (int i = 0; i < hrIndex; i++) {
+			sq_sum += (hrArray[i] * hrArray[i]);
+		}
+		// duration is the number of counts * 4ms
+		if (hrIndex != 0)
+			return (int) Math.sqrt(sq_sum / hrIndex);
+		else 
+			return 0;
 	}
 	
 	private int evaluatePwave() {

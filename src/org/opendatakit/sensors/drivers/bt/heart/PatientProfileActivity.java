@@ -3,7 +3,9 @@ package org.opendatakit.sensors.drivers.bt.heart;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
@@ -90,6 +92,7 @@ public class PatientProfileActivity extends ListActivity {
 	
 	@Override
 	protected void onPause() {
+		Log.d(TAG, "ON PAUSE");
 		dbhelper.close();
 		super.onPause();
 	}
@@ -105,10 +108,47 @@ public class PatientProfileActivity extends ListActivity {
     	j.putExtra("patient", pat);
         startActivity(j);
 	}
-	
-	public void onBackPressed() {
-    	Intent j = new Intent(this, DatabaseActivity.class);
-        startActivity(j);
+
+	public void delete(View view) {
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+				this);
+ 
+			// set title
+			//alertDialogBuilder.setTitle("Your Title");
+ 
+			// set dialog message
+			alertDialogBuilder
+				.setMessage("Are you sure to delete this patient's profile and all ECG data?")
+				.setCancelable(false)
+				.setPositiveButton("Yes",new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,int id) {
+						dbhelper.deletePatient(pat);
+						finish();
+					}
+				  })
+				.setNegativeButton("No",new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,int id) {
+						// if this button is clicked, just close
+						// the dialog box and do nothing
+						dialog.cancel();
+					}
+				});
+ 
+				// create alert dialog
+				AlertDialog alertDialog = alertDialogBuilder.create();
+ 
+				// show it
+				alertDialog.show();
 	}
 	
+	public void returnToPatientList() {
+		Intent launchNext = new Intent(this, DatabaseActivity.class);
+		launchNext.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		startActivity(launchNext);
+	}
+	
+	public void onBackPressed() {
+		returnToPatientList();
+		super.onBackPressed();
+	}	
 }
